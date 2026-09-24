@@ -1,6 +1,6 @@
 name: Implement spec PR
 
-# Dan pushes spec changes to a PR; the agent (currently Claude) implements them on the same branch.
+# A dev pushes spec changes to a PR; the agent (currently Claude) implements them on the same branch.
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -12,9 +12,10 @@ concurrency:
 
 jobs:
   implement:
-    # Only Dan's own pushes start a run, so the agent's pushes never loop.
+    # Devs' pushes start a run; bot pushes (the agent's) never do, so no loops.
+    # Only branches in this repo, i.e. people with write access, not forks.
     if: >-
-      github.event.sender.login == github.repository_owner &&
+      github.event.sender.type != 'Bot' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 60

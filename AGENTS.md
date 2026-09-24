@@ -4,7 +4,7 @@ These rules apply to whichever AI agent works on this repo (Claude, Codex, Copil
 
 ## Roles
 
-- **Dan owns the specs.** Requirement and scenario text in `openspec/` is his. Don't change it without asking in a PR comment first.
+- **Devs own the specs.** Requirement and scenario text in `openspec/` is theirs. Don't change it without asking in a PR comment first.
 - **The agent owns everything else:** code, tests, infrastructure, CI, and the `design.md` / `tasks.md` artifacts inside a change.
 - **Implementation choices are the agent's.** Specs say *what* (e.g. "the site runs for free"); the agent decides *how* (platform, libraries, layout) and records the reasoning in the change's `design.md`. Keep specs implementation-neutral.
 
@@ -15,8 +15,8 @@ These rules apply to whichever AI agent works on this repo (Claude, Codex, Copil
 3. Implement on the PR's own branch in small, focused commits. Every scenario gets a test.
 4. `openspec validate --all --strict` and the test suite must pass.
 5. Archive each completed change with `openspec archive <name> -y`, so `openspec/specs/` matches what ships.
-6. Anything only Dan can do (accounts, DNS, secrets, payments, approvals) becomes an issue labelled `owner-task`, with exact steps. Link it from the PR. Never ask for secrets in comments; they go in GitHub or platform secrets.
-7. Finish with one PR comment: what changed, what's tested, open owner tasks. Add the `ready-for-review` label and mention @danlangford. If blocked, say what's blocking and add `blocked` instead.
+6. Anything only a dev can do (accounts, DNS, secrets, payments, approvals) becomes an issue labelled `owner-task`, with exact steps. Link it from the PR. Never ask for secrets in comments; they go in GitHub or platform secrets.
+7. Finish with one PR comment: what changed, what's tested, open owner tasks. Add the `ready-for-review` label and mention the PR author. If blocked, say what's blocking and add `blocked` instead.
 
 ## Style
 
