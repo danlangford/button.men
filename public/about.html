@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What passes through button.men</title>
+  <script>
+    // Set the theme before first paint; public/js/theme.js has the same rules.
+    (() => {
+      let choice = "auto";
+      try { choice = localStorage.getItem("theme") || "auto"; } catch {}
+      const dark = choice === "dark" || (choice === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.bsTheme = dark ? "dark" : "light";
+    })();
+  </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+</head>
+<body>
+  <main class="container py-4" style="max-width: 40rem">
+    <h1 class="h3">What passes through button.men</h1>
+    <p>button.men is an unofficial front end for <a href="https://www.buttonweavers.com">Button Men Online</a>. Your games and account stay on buttonweavers; button.men just shows them differently.</p>
+
+    <h2 class="h5 mt-4">What passes through</h2>
+    <p>Your browser can't talk to buttonweavers directly from another website, so button.men relays each request. Your username and password pass through once, when you log in, on their way to buttonweavers. After that, buttonweavers' login cookies are kept in <em>your</em> browser for button.men, and relayed with each request.</p>
+
+    <h2 class="h5 mt-4">What's never kept</h2>
+    <ul>
+      <li>Your password, login cookies and game data are never stored or logged by button.men.</li>
+      <li>There's no database, no accounts and no analytics.</li>
+      <li>Every request to buttonweavers says it came from button.men, so its maintainers can see this traffic.</li>
+    </ul>
+
+    <p>Don't take our word for it: <a href="https://github.com/danlangford/button.men">the source code is public</a>. The relay is <a href="https://github.com/danlangford/button.men/blob/main/src/proxy.js">one short file</a>.</p>
+    <p><a href="/">Back to button.men</a></p>
+  </main>
+</body>
+</html>
