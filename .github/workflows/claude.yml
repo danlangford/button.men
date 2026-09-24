@@ -1,6 +1,7 @@
 name: Claude follow-ups
 
-# "@claude ..." comments from Dan on issues and PRs.
+# "@claude ..." comments from devs on issues and PRs.
+# The action itself ignores people without write access.
 on:
   issue_comment:
     types: [created]
@@ -14,7 +15,7 @@ on:
 jobs:
   claude:
     if: >-
-      github.actor == github.repository_owner && (
+      github.event.sender.type != 'Bot' && (
         (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
