@@ -1,0 +1,15 @@
+// Cloudflare Workers, free plan. See openspec/changes/bootstrap/design.md.
+{
+  "name": "button-men",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-05-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    // The Worker sees every request first, so it can redirect http to https.
+    "run_worker_first": true
+  },
+  "routes": [{ "pattern": "button.men", "custom_domain": true }],
+  // Also reachable at button-men.<account>.workers.dev before DNS is ready.
+  "workers_dev": true
+}
