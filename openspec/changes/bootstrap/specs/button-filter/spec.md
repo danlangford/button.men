@@ -14,7 +14,7 @@ Players SHALL be able to filter buttons by name, set, die skill and tournament l
 - **THEN** only buttons in that set with that skill are shown
 
 ### Requirement: Current data
-The button list SHALL match what buttonweavers offers, without Dan updating it by hand.
+The button list SHALL match what buttonweavers offers, without a dev updating it by hand.
 
 #### Scenario: New button added upstream
 - **WHEN** buttonweavers adds a button
