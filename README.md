@@ -14,3 +14,11 @@ The specs in [`openspec/`](openspec/) are the source of truth. Devs edit specs; 
 Follow-ups: mention the agent on the PR (currently `@claude ...`).
 
 The workflow itself is specified in [`openspec/specs/development-workflow/spec.md`](openspec/specs/development-workflow/spec.md). See [`AGENTS.md`](AGENTS.md) for the agent's rules.
+
+## Develop
+
+Needs Node 20+. No dependencies to install.
+
+- `npm test` runs the tests.
+- `npm run dev` serves the site at http://localhost:8787, relaying to the real buttonweavers.
+- Pushes to `main` deploy to Cloudflare (`.github/workflows/deploy.yml`).

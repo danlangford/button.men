@@ -1,0 +1,37 @@
+name: Deploy
+
+# Every push to main deploys to Cloudflare (see openspec/changes/bootstrap/design.md).
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - id: cred
+        run: echo "ok=${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}" >> "$GITHUB_OUTPUT"
+
+      - if: steps.cred.outputs.ok != 'true'
+        run: echo "::notice::Cloudflare secrets not configured yet; see the owner-task issues."
+
+      - uses: actions/checkout@v6
+        if: steps.cred.outputs.ok == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.cred.outputs.ok == 'true'
+        with:
+          node-version: 22
+
+      - if: steps.cred.outputs.ok == 'true'
+        run: npm test
+
+      - if: steps.cred.outputs.ok == 'true'
+        run: npx -y wrangler@4 deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

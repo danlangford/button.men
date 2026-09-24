@@ -1,0 +1,10 @@
+{
+  "name": "button-men",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "dev": "npx -y wrangler@4 dev",
+    "deploy": "npx -y wrangler@4 deploy"
+  }
+}
