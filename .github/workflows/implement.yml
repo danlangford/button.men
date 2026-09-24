@@ -1,0 +1,50 @@
+name: Implement spec PR
+
+# Dan pushes spec changes to a PR; Claude implements them on the same branch.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths: ["openspec/**"]
+
+concurrency:
+  group: implement-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  implement:
+    # Only Dan's own pushes start a run, so Claude's pushes never loop.
+    if: >-
+      github.event.sender.login == github.repository_owner &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm install -g @fission-ai/openspec@1
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          track_progress: true
+          prompt: |
+            Implement spec PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Branch: ${{ github.event.pull_request.head.ref }} (base: ${{ github.event.pull_request.base.ref }}).
+            Follow "Implementing a spec PR" in CLAUDE.md exactly, including the final
+            comment and label. Push commits to this branch; do not open a new PR.
+          claude_args: |
+            --allowedTools "Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch"

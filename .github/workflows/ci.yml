@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate specs
+        run: npx -y @fission-ai/openspec@1 validate --all --strict --no-interactive
+
+      - name: Test
+        if: hashFiles('package.json') != ''
+        run: npm ci && npm test
