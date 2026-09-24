@@ -8,8 +8,7 @@ Button Men Online's interface isn't modern, has no dark mode, and changes slowly
 
 - Host the site at button.men, for free.
 - Relay API calls to buttonweavers without storing anyone's credentials.
-- A modern, dark-mode web UI, starting with logging in, the game list and the game page.
-- Move ButtonFilter here from buttonmen-tools.
+- A modern, dark-mode web UI: log in, see your games, and tap a game to play it on buttonweavers.
 
 ## Capabilities
 
@@ -17,7 +16,6 @@ Button Men Online's interface isn't modern, has no dark mode, and changes slowly
 - `hosting`: where and how the site runs, including cost
 - `api-proxy`: relaying players' API calls to buttonweavers, and what it must never do
 - `web-ui`: the player-facing site
-- `button-filter`: searching and filtering the button list
 
 ### Modified Capabilities
 

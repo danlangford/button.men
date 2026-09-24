@@ -31,6 +31,10 @@ Players SHALL log in and out with their buttonweavers username and password.
 - **WHEN** a player logs in with valid buttonweavers credentials
 - **THEN** they see their games
 
+#### Scenario: Logging out
+- **WHEN** a logged-in player logs out
+- **THEN** they return to the login page
+
 ### Requirement: Game list
 Logged-in players SHALL see their active games, with the games waiting on them first.
 
@@ -38,13 +42,9 @@ Logged-in players SHALL see their active games, with the games waiting on them f
 - **WHEN** a player has games where it is their turn
 - **THEN** those games are listed first
 
-### Requirement: Game page
-Players SHALL be able to view a game: both buttons, dice, scores and the log. Anything the site can't do yet SHALL link to the same game on buttonweavers.
+### Requirement: Opening a game
+For now, opening a game SHALL send the player to that game on buttonweavers.
 
-#### Scenario: Reading a skill
-- **WHEN** a player taps a skill in a game
-- **THEN** its description is shown without leaving the page
-
-#### Scenario: Unsupported action
-- **WHEN** the player needs to do something button.men doesn't support yet
-- **THEN** a link opens that game on buttonweavers
+#### Scenario: Tapping a game
+- **WHEN** a player clicks or taps a game in the list
+- **THEN** that game opens on buttonweavers
