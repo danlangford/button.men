@@ -1,4 +1,4 @@
-<!-- Spec PRs: change openspec/ and open this PR. Claude implements on this branch and labels it ready-for-review. -->
+<!-- Spec PRs: change openspec/ and open this PR. The agent implements on this branch and labels it ready-for-review. -->
 
 ## Spec change
 

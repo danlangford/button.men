@@ -4,7 +4,9 @@ context: |
   button.men is an alternate front end for Button Men Online (buttonweavers.com).
   It talks to the existing buttonweavers JSON API (POST /api/responder; see
   buttonmen-dev/buttonmen src/api/ApiSpec.php). All game logic stays on the
-  buttonweavers server. Dan edits specs; Claude implements them (see CLAUDE.md).
+  buttonweavers server. Dan edits specs; an AI agent implements them (see AGENTS.md).
+  "Modern" in specs means responsive, mobile-first and comfortable on phones
+  as well as desktops.
 
 rules:
   specs:
