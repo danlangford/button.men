@@ -1,0 +1,13 @@
+schema: spec-driven
+
+context: |
+  button.men is an alternate front end for Button Men Online (buttonweavers.com).
+  It talks to the existing buttonweavers JSON API (POST /api/responder; see
+  buttonmen-dev/buttonmen src/api/ApiSpec.php). All game logic stays on the
+  buttonweavers server. Dan edits specs; Claude implements them (see CLAUDE.md).
+
+rules:
+  specs:
+    - Keep requirements implementation-neutral; say what, not how
+  design:
+    - Record platform and library choices here, with the reasoning and cost
