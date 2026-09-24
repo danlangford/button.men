@@ -2,12 +2,12 @@
 
 ## Purpose
 
-The player-facing button.men site: mobile-first, dark-mode capable, and familiar to buttonweavers players.
+The player-facing button.men site: modern, dark-mode capable, and familiar to buttonweavers players.
 
 ## ADDED Requirements
 
-### Requirement: Works on phones
-Every page SHALL be usable on a phone-sized screen without horizontal scrolling or zooming.
+### Requirement: Modern layout
+Every page SHALL be modern: responsive, and usable on any screen from phone to desktop without horizontal scrolling or zooming.
 
 #### Scenario: Narrow screen
 - **WHEN** a page is viewed 375 pixels wide
