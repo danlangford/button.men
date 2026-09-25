@@ -13,3 +13,5 @@ rules:
     - Keep requirements implementation-neutral; say what, not how
   design:
     - Record platform and library choices here, with the reasoning and cost
+githubCopilot:
+  cloudAgent: false
