@@ -14,6 +14,7 @@ import { resolveTheme, saveChoice, storedChoice } from './theme.js';
 const $ = (id) => document.getElementById(id);
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 let signedInPlayer = null;
+let viewRequest = 0;
 
 function applyTheme() {
   document.documentElement.dataset.bsTheme = resolveTheme(storedChoice(), darkQuery.matches);
@@ -25,6 +26,7 @@ function show(view, player = '') {
   $('forum-view').hidden = view !== 'forum';
   $('player').textContent = player;
   $('forum-link').hidden = view === 'login';
+  $('games-link').hidden = view === 'login';
   $('logout').hidden = view === 'login';
 }
 
@@ -64,28 +66,43 @@ function gameItem(game) {
 }
 
 async function showGames(player) {
+  const request = ++viewRequest;
   show('games', player);
   const list = $('games');
   list.replaceChildren();
-  const games = gameList(await activeGames());
-  $('no-games').hidden = games.length > 0;
-  list.append(...games.map(gameItem));
+  try {
+    const games = gameList(await activeGames());
+    if (request !== viewRequest) return;
+    $('no-games').hidden = games.length > 0;
+    list.append(...games.map(gameItem));
+  } catch (error) {
+    if (request === viewRequest) throw error;
+  }
 }
 
 async function showForum(player) {
+  const request = ++viewRequest;
   show('forum', player);
   showError('');
   const content = $('forum-content');
   content.replaceChildren();
   const params = new URLSearchParams(window.location.hash.slice(2));
-  if (params.has('threadId')) {
-    const data = await forumThread(params.get('threadId'), params.get('postId'));
-    renderForumThread(content, data);
-  } else if (params.has('boardId')) {
-    const data = await forumBoard(params.get('boardId'));
-    renderForumBoard(content, data);
-  } else {
-    renderForumOverview(content, await forumOverview());
+  try {
+    if (params.has('threadId')) {
+      const data = await forumThread(params.get('threadId'), params.get('postId'));
+      if (request !== viewRequest) return;
+      renderForumThread(content, data);
+    } else if (params.has('boardId')) {
+      const data = await forumBoard(params.get('boardId'));
+      if (request !== viewRequest) return;
+      renderForumBoard(content, data);
+    } else {
+      const data = await forumOverview();
+      if (request !== viewRequest) return;
+      renderForumOverview(content, data);
+    }
+  } catch (error) {
+    if (request === viewRequest) throw error;
   }
 }
 
@@ -99,6 +116,7 @@ async function start() {
       await showGames(player);
     }
   } else {
+    viewRequest++;
     show('login');
   }
 }
@@ -126,6 +144,7 @@ $('login-form').addEventListener('submit', async (event) => {
 
 $('logout').addEventListener('click', async () => {
   signedInPlayer = null;
+  viewRequest++;
   window.location.hash = '';
   await logout();
   show('login');

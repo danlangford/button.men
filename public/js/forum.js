@@ -109,7 +109,11 @@ export function renderForumThread(container, data) {
     header.append(author, time);
     if (post.isNew) header.append(makeElement(document, 'span', 'badge text-bg-primary', 'New'));
 
-    const body = makeElement(document, 'div', 'card-body forum-post-body text-break');
+    const body = makeElement(
+      document,
+      'div',
+      `card-body forum-post-body text-break${post.deleted ? ' text-body-secondary' : ''}`,
+    );
     body.style.whiteSpace = 'pre-wrap';
     body.textContent = post.body;
     article.append(header, body);

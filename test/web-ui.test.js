@@ -129,8 +129,11 @@ test('web-ui: Forum reads - request the overview, board, and selected thread', a
 
 test('web-ui: From the game list - one forum link reaches all boards and marks unread boards', () => {
   const html = read('public/index.html');
+  assert.match(html, /<a class="navbar-brand fw-bold" href="#games">button\.men<\/a>/);
   assert.match(html, /<a id="forum-link"[^>]*href="#!"[^>]*hidden/);
+  assert.match(html, /<a id="games-link" href="#games"[^>]*hidden>Games<\/a>/);
   assert.match(read('public/js/app.js'), /\$\('forum-link'\)\.hidden = view === 'login'/);
+  assert.match(read('public/js/app.js'), /if \(window\.location\.hash\.startsWith\('#!'\)\) \{\s*showForum\(signedInPlayer\)/);
 
   const document = fakeDocument();
   const container = document.createElement('main');
@@ -181,7 +184,7 @@ test('web-ui: Thread with unread posts - ordered posts render and the page scrol
     currentPostId: null,
     posts: [
       { postId: 27, posterName: 'bob', creationTime: 20, isNew: true, body },
-      { postId: 12, posterName: 'alice', creationTime: 10, isNew: false, body: 'Earlier' },
+      { postId: 12, posterName: 'alice', creationTime: 10, isNew: false, body: 'Earlier', deleted: true },
       { postId: 31, posterName: 'carol', creationTime: 30, isNew: true, body: 'Later unread' },
     ],
   });
@@ -197,6 +200,8 @@ test('web-ui: Thread with unread posts - ordered posts render and the page scrol
   const renderedBody = allElements(target).find((element) => element.className?.includes('forum-post-body'));
   assert.equal(renderedBody.textContent, body);
   assert.deepEqual(renderedBody.children, []);
+  const deletedBody = allElements(posts[0]).find((element) => element.className?.includes('forum-post-body'));
+  assert.match(deletedBody.className, /text-body-secondary/);
   const author = allElements(target).find((element) => element.tagName === 'strong');
   const time = allElements(target).find((element) => element.tagName === 'time');
   assert.equal(author.textContent, 'bob');
@@ -216,6 +221,77 @@ test('web-ui: Replying - thread reply link opens the same buttonweavers thread',
   const reply = allElements(container).find((element) => element.textContent === 'Reply on buttonweavers.com');
   assert.equal(reply.href, buttonweaversThreadUrl(19));
   assert.equal(reply.href, 'https://www.buttonweavers.com/ui/forum.html#!threadId=19');
+});
+
+test('web-ui: Navigating to games - a late forum response does not replace the games view', async () => {
+  const ids = [
+    'theme', 'login-view', 'games-view', 'forum-view', 'player', 'forum-link',
+    'games-link', 'logout', 'error', 'forum-content', 'games', 'no-games', 'login-form',
+  ];
+  const document = fakeDocument();
+  const elements = Object.fromEntries(ids.map((id) => [id, document.createElement('div')]));
+  for (const element of Object.values(elements)) {
+    element.addEventListener = (type, handler) => { element[`on${type}`] = handler; };
+  }
+  document.documentElement = { dataset: {} };
+  document.getElementById = (id) => elements[id];
+
+  const listeners = {};
+  const window = {
+    location: { hash: '#!' },
+    matchMedia: () => ({ matches: false, addEventListener() {} }),
+    addEventListener: (type, handler) => { listeners[type] = handler; },
+  };
+  const original = {
+    document: globalThis.document,
+    window: globalThis.window,
+    localStorage: globalThis.localStorage,
+    fetch: globalThis.fetch,
+  };
+  let releaseForum;
+  let forumStarted;
+  const forumRequested = new Promise((resolve) => { forumStarted = resolve; });
+  let gamesStarted;
+  const gamesRequested = new Promise((resolve) => { gamesStarted = resolve; });
+  globalThis.document = document;
+  globalThis.window = window;
+  globalThis.localStorage = fakeStorage();
+  globalThis.fetch = async (_url, init) => {
+    const args = JSON.parse(init.body);
+    if (args.type === 'loadPlayerName') {
+      return { json: async () => ({ status: 'ok', data: { userName: 'dan' } }) };
+    }
+    if (args.type === 'loadForumOverview') {
+      forumStarted();
+      return new Promise((resolve) => {
+        releaseForum = () => resolve({ json: async () => ({ status: 'ok', data: { boards: [] } }) });
+      });
+    }
+    if (args.type === 'loadActiveGames') {
+      gamesStarted();
+      return { json: async () => ({ status: 'ok', data: games }) };
+    }
+    throw new Error(`Unexpected API call: ${args.type}`);
+  };
+
+  try {
+    await import(`../public/js/app.js?test=${Date.now()}`);
+    await forumRequested;
+    window.location.hash = '#games';
+    listeners.hashchange();
+    await gamesRequested;
+    await new Promise((resolve) => setImmediate(resolve));
+    releaseForum();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(elements['forum-view'].hidden, true);
+    assert.equal(elements['games-view'].hidden, false);
+    assert.deepEqual(elements['forum-content'].children, []);
+  } finally {
+    globalThis.document = original.document;
+    globalThis.window = original.window;
+    globalThis.localStorage = original.localStorage;
+    globalThis.fetch = original.fetch;
+  }
 });
 
 test('web-ui: Logging out - ends the buttonweavers session', async () => {
