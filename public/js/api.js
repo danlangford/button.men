@@ -29,3 +29,25 @@ export async function activeGames(call = callApi) {
   if (result.status !== 'ok') throw new Error(result.message || 'Could not load games');
   return result.data;
 }
+
+async function forumRequest(args, call) {
+  const result = await call(args);
+  if (result.status !== 'ok') throw new Error(result.message || 'Could not load forum');
+  return result.data;
+}
+
+export async function forumOverview(call = callApi) {
+  return forumRequest({ type: 'loadForumOverview' }, call);
+}
+
+export async function forumBoard(boardId, call = callApi) {
+  return forumRequest({ type: 'loadForumBoard', boardId }, call);
+}
+
+export async function forumThread(threadId, currentPostId, call = callApi) {
+  const args = { type: 'loadForumThread', threadId };
+  if (currentPostId !== undefined && currentPostId !== null) {
+    args.currentPostId = currentPostId;
+  }
+  return forumRequest(args, call);
+}

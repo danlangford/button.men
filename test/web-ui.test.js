@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { activeGames, currentPlayer, login, logout } from '../public/js/api.js';
+import {
+  activeGames,
+  currentPlayer,
+  forumBoard,
+  forumOverview,
+  forumThread,
+  login,
+  logout,
+} from '../public/js/api.js';
 import { gameList, gameUrl } from '../public/js/games.js';
 import { resolveTheme, saveChoice, storedChoice } from '../public/js/theme.js';
 import { read } from './helpers.js';
@@ -63,6 +71,28 @@ test('web-ui: wrong password - reports the buttonweavers message', async () => {
   const call = async () => ({ status: 'failed', message: 'Login failed.' });
   assert.deepEqual(await login('dan', 'nope', call), { ok: false, message: 'Login failed.' });
   assert.equal(await currentPlayer(async () => ({ status: 'failed', data: null })), null);
+});
+
+test('web-ui: Forum reads - request the overview, board, and selected thread', async () => {
+  const calls = [];
+  const call = async (args) => {
+    calls.push(args);
+    return { status: 'ok', data: { boards: [], threads: [], posts: [] } };
+  };
+  await forumOverview(call);
+  await forumBoard(8, call);
+  await forumThread(19, 27, call);
+  assert.deepEqual(calls, [
+    { type: 'loadForumOverview' },
+    { type: 'loadForumBoard', boardId: 8 },
+    { type: 'loadForumThread', threadId: 19, currentPostId: 27 },
+  ]);
+  await forumThread(20, undefined, call);
+  assert.deepEqual(calls[3], { type: 'loadForumThread', threadId: 20 });
+  await assert.rejects(
+    forumOverview(async () => ({ status: 'failed', message: 'No forum access.' })),
+    /No forum access\./,
+  );
 });
 
 test('web-ui: Logging out - ends the buttonweavers session', async () => {

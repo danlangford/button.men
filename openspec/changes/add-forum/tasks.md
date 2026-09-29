@@ -2,7 +2,7 @@
 
 ## 1. Forum API
 
-- [ ] 1.1 Add API wrappers for loading the forum overview, board, and thread; verify arguments and failed responses with API unit tests.
+- [x] 1.1 Add API wrappers for loading the forum overview, board, and thread; verify arguments and failed responses with API unit tests.
 
 ## 2. Forum navigation and boards
 
