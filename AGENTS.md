@@ -14,7 +14,7 @@ You'll be given a change name and a **spec branch** (for example `spec/add-forum
 
 1. Work on a new branch cut from the spec branch. Your pull request targets **the spec branch, never `main`**.
 2. Diff the spec branch against `main` under `openspec/`. Work out which changes (`openspec/changes/<name>/`) or direct spec edits are in scope.
-3. For each change, write `design.md` and `tasks.md` if they're missing (`openspec instructions <artifact> --change <name>`).
+3. For each change, write `design.md` and `tasks.md` if they're missing (`openspec instructions <artifact> --change <name>`). If the proposal has a `## Suggestions` section, `design.md` must answer each suggestion by name: adopted, adapted or rejected, and why.
 4. Implement in small, focused commits. Every scenario gets a test that checks the behaviour itself, not just that some code exists.
 5. `openspec validate --all --strict` and `npm test` must pass.
 6. Archive each completed change with `openspec archive <name> -y`, so `openspec/specs/` matches what ships.
