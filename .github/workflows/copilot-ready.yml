@@ -1,0 +1,24 @@
+name: Copilot PR ready
+
+# The Copilot cloud agent can't take its own PRs out of draft. When it asks a
+# dev to review, it's done, so mark the PR ready. Merging is still a human's job.
+# pull_request_target runs this file from the base branch and never checks out
+# the PR's code.
+on:
+  pull_request_target:
+    types: [review_requested]
+
+jobs:
+  ready:
+    if: >-
+      github.event.pull_request.draft &&
+      github.event.pull_request.user.login == 'Copilot'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - run: gh pr ready "$PR" --repo "$REPO"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
