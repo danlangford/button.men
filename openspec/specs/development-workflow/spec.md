@@ -36,7 +36,7 @@ The agent SHALL tell the dev when its pull request is ready for review.
 
 #### Scenario: Work complete
 - **WHEN** implementation is done and checks pass
-- **THEN** the agent's pull request describes what changed and how it's tested, and asks the dev for a review
+- **THEN** the agent's pull request describes what changed and how it's tested, is no longer a draft, and asks the dev for a review
 
 #### Scenario: Work blocked
 - **WHEN** the agent cannot finish
