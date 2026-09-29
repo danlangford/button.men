@@ -1,9 +1,19 @@
-import { activeGames, currentPlayer, login, logout } from './api.js';
+import {
+  activeGames,
+  currentPlayer,
+  forumBoard,
+  forumOverview,
+  forumThread,
+  login,
+  logout,
+} from './api.js';
 import { gameList } from './games.js';
+import { renderForumBoard, renderForumOverview, renderForumThread } from './forum.js';
 import { resolveTheme, saveChoice, storedChoice } from './theme.js';
 
 const $ = (id) => document.getElementById(id);
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+let signedInPlayer = null;
 
 function applyTheme() {
   document.documentElement.dataset.bsTheme = resolveTheme(storedChoice(), darkQuery.matches);
@@ -12,8 +22,10 @@ function applyTheme() {
 function show(view, player = '') {
   $('login-view').hidden = view !== 'login';
   $('games-view').hidden = view !== 'games';
+  $('forum-view').hidden = view !== 'forum';
   $('player').textContent = player;
-  $('logout').hidden = view !== 'games';
+  $('forum-link').hidden = view === 'login';
+  $('logout').hidden = view === 'login';
 }
 
 function showError(message) {
@@ -60,10 +72,32 @@ async function showGames(player) {
   list.append(...games.map(gameItem));
 }
 
+async function showForum(player) {
+  show('forum', player);
+  showError('');
+  const content = $('forum-content');
+  content.replaceChildren();
+  const params = new URLSearchParams(window.location.hash.slice(2));
+  if (params.has('threadId')) {
+    const data = await forumThread(params.get('threadId'), params.get('postId'));
+    renderForumThread(content, data);
+  } else if (params.has('boardId')) {
+    const data = await forumBoard(params.get('boardId'));
+    renderForumBoard(content, data);
+  } else {
+    renderForumOverview(content, await forumOverview());
+  }
+}
+
 async function start() {
   const player = await currentPlayer();
+  signedInPlayer = player;
   if (player) {
-    await showGames(player);
+    if (window.location.hash.startsWith('#!')) {
+      await showForum(player);
+    } else {
+      await showGames(player);
+    }
   } else {
     show('login');
   }
@@ -91,8 +125,19 @@ $('login-form').addEventListener('submit', async (event) => {
 });
 
 $('logout').addEventListener('click', async () => {
+  signedInPlayer = null;
+  window.location.hash = '';
   await logout();
   show('login');
+});
+
+window.addEventListener('hashchange', () => {
+  if (!signedInPlayer) return;
+  if (window.location.hash.startsWith('#!')) {
+    showForum(signedInPlayer).catch((error) => showError(error.message));
+  } else {
+    showGames(signedInPlayer).catch((error) => showError(error.message));
+  }
 });
 
 start().catch((error) => showError(error.message));

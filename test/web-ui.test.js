@@ -10,6 +10,13 @@ import {
   logout,
 } from '../public/js/api.js';
 import { gameList, gameUrl } from '../public/js/games.js';
+import {
+  buttonweaversThreadUrl,
+  forumThreadUrl,
+  renderForumBoard,
+  renderForumOverview,
+  renderForumThread,
+} from '../public/js/forum.js';
 import { resolveTheme, saveChoice, storedChoice } from '../public/js/theme.js';
 import { read } from './helpers.js';
 
@@ -29,6 +36,31 @@ const games = {
 function fakeStorage() {
   const values = {};
   return { getItem: (k) => values[k] ?? null, setItem: (k, v) => { values[k] = v; } };
+}
+
+function fakeDocument() {
+  const document = {
+    createElement(tagName) {
+      return {
+        tagName,
+        ownerDocument: document,
+        children: [],
+        style: {},
+        append(...children) { this.children.push(...children); },
+        replaceChildren(...children) { this.children = children; },
+        scrollIntoView(options) { this.scrollOptions = options; },
+        get textContent() {
+          return (this.text || '') + this.children.map((child) => child.textContent).join('');
+        },
+        set textContent(value) { this.text = String(value); },
+      };
+    },
+  };
+  return document;
+}
+
+function allElements(element) {
+  return [element, ...element.children.flatMap(allElements)];
 }
 
 test('web-ui: Narrow screen - pages are responsive', () => {
@@ -93,6 +125,97 @@ test('web-ui: Forum reads - request the overview, board, and selected thread', a
     forumOverview(async () => ({ status: 'failed', message: 'No forum access.' })),
     /No forum access\./,
   );
+});
+
+test('web-ui: From the game list - one forum link reaches all boards and marks unread boards', () => {
+  const html = read('public/index.html');
+  assert.match(html, /<a id="forum-link"[^>]*href="#!"[^>]*hidden/);
+  assert.match(read('public/js/app.js'), /\$\('forum-link'\)\.hidden = view === 'login'/);
+
+  const document = fakeDocument();
+  const container = document.createElement('main');
+  renderForumOverview(container, {
+    boards: [
+      { boardId: 1, boardName: 'Announcements', description: 'News', firstNewPostId: null },
+      { boardId: 2, boardName: 'Chat', description: 'Talk', firstNewPostId: 42 },
+    ],
+  });
+  const links = allElements(container).filter((element) => element.tagName === 'a');
+  assert.deepEqual(links.map((link) => link.href), ['#!boardId=1', '#!boardId=2']);
+  assert.equal(links[0].textContent.includes('New posts'), false);
+  assert.equal(links[1].textContent.includes('New posts'), true);
+});
+
+test('web-ui: Busy board - threads render latest activity first with an unread-post link', () => {
+  const document = fakeDocument();
+  const container = document.createElement('main');
+  renderForumBoard(container, {
+    boardName: 'Chat',
+    description: 'Talk',
+    threads: [
+      { threadId: 1, threadTitle: 'Older', latestPosterName: 'alice', latestLastUpdateTime: 10 },
+      {
+        threadId: 2,
+        threadTitle: 'Latest',
+        latestPosterName: 'bob',
+        latestLastUpdateTime: 20,
+        firstNewPostId: 37,
+      },
+    ],
+  });
+  const links = allElements(container).filter((element) => element.tagName === 'a');
+  assert.deepEqual(links.slice(1).map((link) => link.children[0].textContent), ['Latest', 'Older']);
+  assert.equal(links[1].href, forumThreadUrl(2, 37));
+  assert.equal(links[1].textContent.includes('New posts'), true);
+});
+
+test('web-ui: Thread with unread posts - ordered posts render and the page scrolls to the first unread', () => {
+  const document = fakeDocument();
+  const container = document.createElement('main');
+  const body = '<img src=x onerror=alert(1)> [b]raw[/b]';
+  const target = renderForumThread(container, {
+    threadId: 19,
+    threadTitle: 'A thread',
+    boardId: 4,
+    boardName: 'Chat',
+    currentPostId: null,
+    posts: [
+      { postId: 27, posterName: 'bob', creationTime: 20, isNew: true, body },
+      { postId: 12, posterName: 'alice', creationTime: 10, isNew: false, body: 'Earlier' },
+      { postId: 31, posterName: 'carol', creationTime: 30, isNew: true, body: 'Later unread' },
+    ],
+  });
+  const elements = allElements(container);
+  const posts = elements.filter((element) => element.tagName === 'article');
+  assert.deepEqual(posts.map((post) => post.id), [
+    'forum-post-12',
+    'forum-post-27',
+    'forum-post-31',
+  ]);
+  assert.equal(target.id, 'forum-post-27');
+  assert.deepEqual(target.scrollOptions, { block: 'start' });
+  const renderedBody = allElements(target).find((element) => element.className?.includes('forum-post-body'));
+  assert.equal(renderedBody.textContent, body);
+  assert.deepEqual(renderedBody.children, []);
+  const author = allElements(target).find((element) => element.tagName === 'strong');
+  const time = allElements(target).find((element) => element.tagName === 'time');
+  assert.equal(author.textContent, 'bob');
+  assert.notEqual(time.dateTime, undefined);
+});
+
+test('web-ui: Replying - thread reply link opens the same buttonweavers thread', () => {
+  const document = fakeDocument();
+  const container = document.createElement('main');
+  renderForumThread(container, {
+    threadId: 19,
+    threadTitle: 'A thread',
+    boardId: 4,
+    boardName: 'Chat',
+    posts: [],
+  });
+  const reply = allElements(container).find((element) => element.textContent === 'Reply on buttonweavers.com');
+  assert.equal(reply.href, buttonweaversThreadUrl(19));
+  assert.equal(reply.href, 'https://www.buttonweavers.com/ui/forum.html#!threadId=19');
 });
 
 test('web-ui: Logging out - ends the buttonweavers session', async () => {
