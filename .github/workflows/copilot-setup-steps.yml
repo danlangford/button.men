@@ -30,5 +30,8 @@ jobs:
       - name: Pre-download Wrangler for npm run dev
         run: npx -y wrangler@4 --version
 
+      - name: Clone Button Men upstream for reference (see AGENTS.md)
+        run: git clone --depth 1 https://github.com/buttonmen-dev/buttonmen /tmp/buttonmen
+
       - name: Check the starting point
         run: npm test && openspec validate --all --strict --no-interactive
