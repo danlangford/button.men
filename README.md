@@ -2,6 +2,8 @@
 
 A modern, dark-mode-capable front end for [Button Men Online](https://www.buttonweavers.com), talking to the existing buttonweavers API.
 
+How Button Men works, including its API, is defined by its source code: [buttonmen-dev/buttonmen](https://github.com/buttonmen-dev/buttonmen) (forked at [danlangford/buttonmen](https://github.com/danlangford/buttonmen)). button.men only displays and relays.
+
 ## How this repo works
 
 The specs in [`openspec/`](openspec/) are the source of truth. Devs edit specs; an AI agent implements them.
