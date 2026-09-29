@@ -9,9 +9,12 @@ context: |
   as well as desktops.
 
 rules:
+  proposal:
+    - "Optional '## Suggestions' section: the dev's non-binding technical ideas"
   specs:
     - Keep requirements implementation-neutral; say what, not how
   design:
     - Record platform and library choices here, with the reasoning and cost
+    - "Answer every item in the proposal's Suggestions section: adopted, adapted or rejected, and why"
 githubCopilot:
-  cloudAgent: false
+  cloudAgent: true
