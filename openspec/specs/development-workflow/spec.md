@@ -2,49 +2,56 @@
 
 ## Purpose
 
-How spec changes become shipped code in this repo: devs edit specs in pull requests, an AI agent implements them on the same branch, and the dev reviews and merges.
+How spec changes become shipped code in this repo: a dev proposes a spec change in a pull request, hands it to an AI agent, reviews the agent's pull request into the spec branch, and merges both.
 
 ## Requirements
 
 ### Requirement: Spec changes arrive as pull requests
-Every change to behaviour SHALL start as a pull request that changes files under `openspec/`.
+Every change to behaviour SHALL start as a pull request, from a spec branch, that changes files under `openspec/`.
 
 #### Scenario: A dev proposes a change
-- **WHEN** a dev pushes a branch that changes `openspec/` and opens a pull request
-- **THEN** an implementation run starts for that pull request
+- **WHEN** a dev pushes a spec branch that changes `openspec/` and opens a pull request into `main`
+- **THEN** the pull request shows the proposed spec change and CI validates it
 
-#### Scenario: Agent pushes do not retrigger
-- **WHEN** the agent pushes implementation commits to the pull request
-- **THEN** no new implementation run starts
+### Requirement: Handing a change to the agent
+A dev SHALL hand a spec change to the agent by asking it to implement that change, with the spec branch as the base.
 
-### Requirement: Implementation lands on the same pull request
-The agent SHALL implement a spec pull request on its own branch, so spec and code are reviewed and merged together.
+#### Scenario: Handing off
+- **WHEN** a dev asks the agent to implement a change and names its spec branch as the base
+- **THEN** the agent starts work on a new branch cut from that spec branch
+
+### Requirement: Implementation arrives as a pull request into the spec branch
+The agent SHALL deliver its implementation as its own pull request targeting the spec branch, never `main`, so the spec branch stays the dev's.
+
+#### Scenario: Agent opens its pull request
+- **WHEN** the agent has implemented a change
+- **THEN** its pull request targets the spec branch
 
 #### Scenario: Main stays consistent
-- **WHEN** a spec pull request is merged
+- **WHEN** the dev merges the agent's pull request into the spec branch and then the spec pull request into `main`
 - **THEN** `main` contains both the spec and the code that implements it, and no unarchived changes
 
 ### Requirement: Ready-for-review notification
-The agent SHALL tell the pull request's author when a pull request is ready for review.
+The agent SHALL tell the dev when its pull request is ready for review.
 
 #### Scenario: Work complete
 - **WHEN** implementation is done and checks pass
-- **THEN** the pull request gets a summary comment mentioning the pull request's author and the `ready-for-review` label
+- **THEN** the agent's pull request describes what changed and how it's tested, and asks the dev for a review
 
 #### Scenario: Work blocked
 - **WHEN** the agent cannot finish
-- **THEN** the pull request gets a comment explaining the blocker and the `blocked` label
+- **THEN** its pull request explains the blocker
 
 ### Requirement: Owner tasks
-Anything the agent cannot do itself SHALL be tracked as a GitHub issue labelled `owner-task`, with exact steps.
+Anything the agent cannot do itself SHALL be written up with exact steps and tracked as a GitHub issue labelled `owner-task`.
 
 #### Scenario: Manual step needed
 - **WHEN** implementation needs an account, DNS change, secret or approval
-- **THEN** an `owner-task` issue describes the steps and is linked from the pull request
+- **THEN** the agent's pull request lists the steps under "Owner tasks", and each becomes an `owner-task` issue
 
 ### Requirement: Follow-up requests
-Devs SHALL be able to ask for changes by mentioning the agent on a pull request or issue.
+Devs SHALL be able to ask for changes by mentioning the agent on its pull request.
 
-#### Scenario: Follow-up on a pull request
-- **WHEN** a dev mentions the agent with a request on a pull request
+#### Scenario: Follow-up on the agent's pull request
+- **WHEN** a dev mentions the agent with a request on its pull request
 - **THEN** the agent makes the change on that pull request's branch and replies

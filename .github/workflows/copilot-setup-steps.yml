@@ -1,0 +1,34 @@
+name: Copilot Setup Steps
+
+# Prepares the Copilot cloud agent's environment before each task, so it
+# doesn't spend its own time installing tools. Runs on changes for validation.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # Copilot only picks up a job with exactly this name.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install OpenSpec
+        run: npm install -g @fission-ai/openspec@1
+
+      - name: Pre-download Wrangler for npm run dev
+        run: npx -y wrangler@4 --version
+
+      - name: Check the starting point
+        run: npm test && openspec validate --all --strict --no-interactive
