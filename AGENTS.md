@@ -22,6 +22,8 @@ button.men only displays and relays; Button Men Online itself is the source of t
 
 ## Drafting a spec from an idea
 
+**An issue titled "Idea: …" is always a drafting request, never an implementation:** don't write code for it, even if it describes a feature in detail.
+
 When a dev asks you to turn an idea (usually an issue) into a spec:
 
 1. Pick a short kebab-case name and create only `openspec/changes/<name>/proposal.md` and its spec deltas (`specs/<capability>/spec.md`). Use `openspec instructions proposal --change <name>` and `openspec instructions specs --change <name>`.

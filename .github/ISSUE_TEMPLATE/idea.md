@@ -4,8 +4,9 @@ about: A rough idea for an agent to turn into an OpenSpec change
 title: "Idea: "
 ---
 
-<!-- Assign to Copilot with the OpenSpec custom agent, base branch main.
-     It drafts the spec (proposal + spec deltas) in a PR for you to edit. -->
+<!-- Assign with the "Assign agent" dialog: agent OpenSpec, base branch main. -->
+
+**Please draft an OpenSpec change for this idea: proposal and spec deltas only, following AGENTS.md "Drafting a spec from an idea". Don't implement it.**
 
 ## What
 
