@@ -1,9 +1,20 @@
-import { activeGames, currentPlayer, login, logout } from './api.js';
+import {
+  activeGames,
+  currentPlayer,
+  forumBoard,
+  forumOverview,
+  forumThread,
+  login,
+  logout,
+} from './api.js';
 import { gameList } from './games.js';
+import { renderForumBoard, renderForumOverview, renderForumThread } from './forum.js';
 import { resolveTheme, saveChoice, storedChoice } from './theme.js';
 
 const $ = (id) => document.getElementById(id);
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+let signedInPlayer = null;
+let viewRequest = 0;
 
 function applyTheme() {
   document.documentElement.dataset.bsTheme = resolveTheme(storedChoice(), darkQuery.matches);
@@ -12,8 +23,11 @@ function applyTheme() {
 function show(view, player = '') {
   $('login-view').hidden = view !== 'login';
   $('games-view').hidden = view !== 'games';
+  $('forum-view').hidden = view !== 'forum';
   $('player').textContent = player;
-  $('logout').hidden = view !== 'games';
+  $('forum-link').hidden = view === 'login';
+  $('games-link').hidden = view === 'login';
+  $('logout').hidden = view === 'login';
 }
 
 function showError(message) {
@@ -52,19 +66,57 @@ function gameItem(game) {
 }
 
 async function showGames(player) {
+  const request = ++viewRequest;
   show('games', player);
   const list = $('games');
   list.replaceChildren();
-  const games = gameList(await activeGames());
-  $('no-games').hidden = games.length > 0;
-  list.append(...games.map(gameItem));
+  try {
+    const games = gameList(await activeGames());
+    if (request !== viewRequest) return;
+    $('no-games').hidden = games.length > 0;
+    list.append(...games.map(gameItem));
+  } catch (error) {
+    if (request === viewRequest) throw error;
+  }
+}
+
+async function showForum(player) {
+  const request = ++viewRequest;
+  show('forum', player);
+  showError('');
+  const content = $('forum-content');
+  content.replaceChildren();
+  const params = new URLSearchParams(window.location.hash.slice(2));
+  try {
+    if (params.has('threadId')) {
+      const data = await forumThread(params.get('threadId'), params.get('postId'));
+      if (request !== viewRequest) return;
+      renderForumThread(content, data);
+    } else if (params.has('boardId')) {
+      const data = await forumBoard(params.get('boardId'));
+      if (request !== viewRequest) return;
+      renderForumBoard(content, data);
+    } else {
+      const data = await forumOverview();
+      if (request !== viewRequest) return;
+      renderForumOverview(content, data);
+    }
+  } catch (error) {
+    if (request === viewRequest) throw error;
+  }
 }
 
 async function start() {
   const player = await currentPlayer();
+  signedInPlayer = player;
   if (player) {
-    await showGames(player);
+    if (window.location.hash.startsWith('#!')) {
+      await showForum(player);
+    } else {
+      await showGames(player);
+    }
   } else {
+    viewRequest++;
     show('login');
   }
 }
@@ -91,8 +143,20 @@ $('login-form').addEventListener('submit', async (event) => {
 });
 
 $('logout').addEventListener('click', async () => {
+  signedInPlayer = null;
+  viewRequest++;
+  window.location.hash = '';
   await logout();
   show('login');
+});
+
+window.addEventListener('hashchange', () => {
+  if (!signedInPlayer) return;
+  if (window.location.hash.startsWith('#!')) {
+    showForum(signedInPlayer).catch((error) => showError(error.message));
+  } else {
+    showGames(signedInPlayer).catch((error) => showError(error.message));
+  }
 });
 
 start().catch((error) => showError(error.message));
