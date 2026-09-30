@@ -22,7 +22,7 @@ button.men only displays and relays; Button Men Online itself is the source of t
 
 ## Drafting a spec from an idea
 
-**An issue titled "Idea: …" is always a drafting request, never an implementation:** don't write code for it, even if it describes a feature in detail.
+**An issue titled "Idea: …" is a drafting request:** don't write code for it, even if it describes a feature in detail, until a dev explicitly asks you on the pull request to implement it (see below).
 
 When a dev asks you to turn an idea (usually an issue) into a spec:
 
@@ -30,14 +30,20 @@ When a dev asks you to turn an idea (usually an issue) into a spec:
 2. Keep requirements implementation-neutral, with SHALL/MUST, and make every scenario testable (WHEN/THEN). Check upstream behaviour (see "Button Men source of truth") so the spec matches how buttonweavers actually works.
 3. Put the dev's technical ideas under `## Suggestions` in the proposal, not in requirements, unless the dev said they're required.
 4. Write no code, no `design.md` or `tasks.md`, and don't archive; that happens when the change is implemented.
-5. `openspec validate <name> --strict` must pass. In the pull request, list anything in the idea you were unsure how to specify, as questions for the dev.
+5. `openspec validate <name> --strict` must pass. Open the pull request into `main`, list anything in the idea you were unsure how to specify as questions for the dev, and ask for a review.
+6. When the dev comments asking you to implement it (for example "@copilot looks great, implement it on this branch"), that's their approval. Continue with "Implementing a spec change" on **this same branch and pull request**.
 
 ## Implementing a spec change
 
-You'll be given a change name and a **spec branch** (for example `spec/add-forum`).
+You'll be asked in one of two ways:
 
-1. Work on a new branch cut from the spec branch. Your pull request targets **the spec branch, never `main`**.
-2. Diff the spec branch against `main` under `openspec/`. Work out which changes (`openspec/changes/<name>/`) or direct spec edits are in scope.
+- **On your spec-draft pull request (the usual way):** a dev approves the spec and asks you to implement it. Add commits to that pull request's branch; don't open another pull request.
+- **Stacked on a dev's spec branch:** you're given a change name and a **spec branch** (for example `spec/add-forum`). Cut a new branch from it and open your pull request into **the spec branch, never `main`**.
+
+Either way, once a dev has approved the spec, its requirement text is theirs: don't change it; raise concerns in the pull request instead.
+
+1. Confirm which branch you're working on (see above).
+2. Diff that branch against `main` under `openspec/`. Work out which changes (`openspec/changes/<name>/`) or direct spec edits are in scope.
 3. For each change, write `design.md` and `tasks.md` if they're missing (`openspec instructions <artifact> --change <name>`). If the proposal has a `## Suggestions` section, `design.md` must answer each suggestion by name: adopted, adapted or rejected, and why.
 4. Implement in small, focused commits. Every scenario gets a test that checks the behaviour itself, not just that some code exists.
 5. `openspec validate --all --strict` and `npm test` must pass.
