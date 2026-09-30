@@ -162,11 +162,14 @@ test('preview workflow uses pull_request_target and does not run PR scripts or W
   assert.match(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /^\s+pull_request:/m);
   const deployCondition = 'github.event.action != \'closed\' && github.event.pull_request.head.repo.full_name == github.repository';
-  assert.equal(workflow.split(deployCondition).length - 1, 3);
+  assert.equal(workflow.split(deployCondition).length - 1, 4);
   assert.match(workflow, /name: Remove closed PR preview\n\s+if: github\.event\.action == 'closed'\n/);
   assert.ok(workflow.indexOf('run: npm ci') < workflow.indexOf('path: pr-source'));
   assert.match(workflow, /path: pr-source/);
   assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
+  assert.match(workflow, /run: node scripts\/build-specs\.js pr-source\/openspec\/specs pr-source\/public\/specs\/specifications\.json/);
+  assert.ok(workflow.indexOf('path: pr-source') < workflow.indexOf('name: Build preview specifications'));
+  assert.ok(workflow.indexOf('name: Build preview specifications') < workflow.indexOf('run: node scripts/preview.js deploy'));
   assert.doesNotMatch(workflow, /npm (?:install|run)|wrangler\.jsonc/);
   const checkoutSteps = workflow.slice(workflow.indexOf('path: pr-source'), workflow.indexOf('run: node scripts/preview.js deploy'));
   assert.doesNotMatch(checkoutSteps, /secrets\.CLOUDFLARE_API_TOKEN/);

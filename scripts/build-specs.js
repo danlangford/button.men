@@ -40,5 +40,9 @@ export function buildSpecifications(source = sourceDirectory, output = outputFil
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  buildSpecifications();
+  const [source, output] = process.argv.slice(2);
+  buildSpecifications(
+    source ? resolve(source) : sourceDirectory,
+    output ? resolve(output) : outputFile,
+  );
 }

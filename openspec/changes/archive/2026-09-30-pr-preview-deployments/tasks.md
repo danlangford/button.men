@@ -15,3 +15,4 @@
 ## 3. Integration and verification
 
 - [x] 3.1 Run `npm test` and `openspec validate pr-preview-deployments --strict`; verify no production deployment or API target behavior changes.
+- [x] 3.2 Run the trusted specification build against same-repository PR sources before preview deployment; verify generated assets are placed in the PR's published static directory without executing PR scripts.

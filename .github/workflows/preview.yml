@@ -48,6 +48,10 @@ jobs:
           path: pr-source
           persist-credentials: false
 
+      - name: Build preview specifications
+        if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+        run: node scripts/build-specs.js pr-source/openspec/specs pr-source/public/specs/specifications.json
+
       - name: Deploy preview from PR source
         if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
         run: node scripts/preview.js deploy
