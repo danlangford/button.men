@@ -20,11 +20,12 @@ The OpenSpec files are the source of truth, but reading them through the reposit
 
 ## Impact
 
-- Adds a public-facing specification view to the existing button.men site.
+- Makes the current specifications available through a browser-accessible presentation; the deployment location and technology remain implementation decisions.
 - Uses the existing `openspec/specs/` files as its content source; no changes to the Buttonweavers API are needed.
 
 ## Suggestions
 
-- Prefer a page on the existing button.men site over a separate GitHub Pages or wiki destination, consistent with the request not to introduce another domain. Confirm the simplest way to fit it into the current site.
+- Consider the existing button.men site, GitHub Pages, GitHub Wiki, or another suitable existing platform. Choose the option that provides the requested browsing, links, search, and mobile access with the least unnecessary complexity.
+- Avoid requiring the purchase or registration of another domain, a button.men subdomain, or changes to domain registrar settings. A platform-provided address is acceptable if it meets the requirements.
 - Generate the displayed and searchable content from the existing OpenSpec Markdown rather than maintaining a second copy. A generated representation is acceptable if it stays derived from that source.
 - Favor existing project capabilities or a small established library over bespoke viewer/search code. A single-page app is an option only if it reduces complexity; avoid requiring a large database, cache, or separately maintained search index.

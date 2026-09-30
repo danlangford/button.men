@@ -46,12 +46,12 @@ The content displayed and searched by the site SHALL be derived from the current
 - **WHEN** a current specification is updated and the site is updated
 - **THEN** the browser view and search reflect the updated specification
 
-### Requirement: Use the existing site domain
-The specification view SHALL be available on the existing button.men site without requiring a separate domain.
+### Requirement: Avoid domain registration changes
+The specification view SHALL NOT require purchasing or registering a new domain, using a button.men subdomain, or changing domain registrar settings. It MAY use an address provided by an existing platform.
 
-#### Scenario: Visit the specification view
-- **WHEN** a visitor opens the specification view
-- **THEN** its browser address uses the existing button.men domain
+#### Scenario: Publish using an existing platform
+- **WHEN** the specification view is published
+- **THEN** it can be accessed without purchasing or registering a domain or changing registrar settings
 
 ### Requirement: Read specifications on phones and desktops
 The specification view SHALL remain readable and usable on phone and desktop screen sizes.
