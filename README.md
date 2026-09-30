@@ -15,6 +15,8 @@ The specs in [`openspec/`](openspec/) are the source of truth. Devs edit specs; 
 
 Follow-ups: comment `@copilot ...` on the agent's PR.
 
+**Starting from an idea instead:** open an issue with the **Idea** template and assign it to Copilot with the **OpenSpec** custom agent, base branch `main`. Its PR drafts the change (proposal and spec deltas only). Edit it until it's right; that PR is your spec PR. Then hand it off as in step 2, using the draft PR's branch as the base.
+
 The workflow itself is specified in [`openspec/specs/development-workflow/spec.md`](openspec/specs/development-workflow/spec.md). See [`AGENTS.md`](AGENTS.md) for the agent's rules.
 
 ## Develop
