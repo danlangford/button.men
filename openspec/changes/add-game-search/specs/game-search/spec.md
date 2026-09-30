@@ -13,8 +13,15 @@ Players SHALL be able to get to the game search screen from anywhere on button.m
 - **WHEN** a player is looking at their games
 - **THEN** one tap takes them to game search
 
+### Requirement: Search requires login
+Game search SHALL require a logged-in player, matching buttonweavers' own history search, which redirects anonymous visitors to a login page.
+
+#### Scenario: Not logged in
+- **WHEN** a player who is not logged in tries to reach game search
+- **THEN** they are sent to the login page instead
+
 ### Requirement: Search filters
-Players SHALL be able to filter game history by any combination of: game ID, either player's name, either player's button name, game status (active, unstarted, complete or cancelled), the winner, and game-started or last-move date ranges.
+Players SHALL be able to filter game history by any combination of: game ID, either player's name, either player's button name, game status (active, unstarted, complete or cancelled), and the winner.
 
 #### Scenario: Searching by player name
 - **WHEN** a player enters another player's name and submits the search
@@ -23,6 +30,17 @@ Players SHALL be able to filter game history by any combination of: game ID, eit
 #### Scenario: No filters given
 - **WHEN** a player opens game search without entering any filter
 - **THEN** they see a search form and no results until they submit a search
+
+### Requirement: Date range filters
+Players SHALL be able to filter by game-started and by last-move date range, each picked with a date-range picker rather than typed dates, and the picker SHALL be clean, friendly and modern to use on both desktop and mobile browsers. The implementing agent has autonomy to build this picker itself or adopt a small, lightweight date-picker library or utility, whichever best serves that usability bar.
+
+#### Scenario: Picking a date range on mobile
+- **WHEN** a player on a mobile browser opens the game-started date filter
+- **THEN** they can pick a start and end date without typing, using controls comfortable to tap
+
+#### Scenario: Filtering by last-move range
+- **WHEN** a player picks a last-move date range and submits the search
+- **THEN** only games whose last move falls within that range are shown
 
 ### Requirement: Sortable results
 Results SHALL be sortable, one column at a time, ascending or descending, by any of: game ID, either player's name, either player's button name, game start time, last move time, winner, or status.

@@ -7,7 +7,9 @@ Players want to find games beyond the short list of their own active games: a sp
 ## What Changes
 
 - A new game search screen, reachable from the site navigation, where players can filter and sort games using the fields buttonweavers' `searchGameHistory` API supports (player, button, status, winner, date ranges, game ID) and page through results.
+- Game-started and last-move filters use date-range pickers, not typed dates.
 - Search results are sortable by column and link out to the matching game on buttonweavers.com; button.men does not render or play the game itself.
+- Like buttonweavers' own history search, game search requires a logged-in player; anonymous visitors are sent to log in first.
 - The site navigation gains a link to the search screen alongside the existing Games and Forum links.
 
 ## Capabilities
