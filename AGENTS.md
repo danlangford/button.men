@@ -4,7 +4,7 @@ These rules apply to whichever AI agent works on this repo (Claude, Codex, Copil
 
 ## Roles
 
-- **Devs own the specs.** Requirement and scenario text in `openspec/` is theirs. Don't change it without asking in a PR comment first.
+- **Devs own the specs.** Requirement and scenario text in `openspec/` is theirs. Don't change it without asking in a PR comment first. The exception is when a dev asks you to draft a spec from an idea (below); then writing it is the task, and the dev reviews and owns the result.
 - **The agent owns everything else:** code, tests, infrastructure, CI, and the `design.md` / `tasks.md` artifacts inside a change.
 - **Implementation choices are the agent's.** Specs say *what* (e.g. "the site runs for free"); the agent decides *how* (platform, libraries, layout) and records the reasoning in the change's `design.md`. Keep specs implementation-neutral.
 
@@ -19,6 +19,16 @@ button.men only displays and relays; Button Men Online itself is the source of t
   - Good places to start: `src/api/ApiSpec.php` (every API call's arguments and response fields), `src/api/ApiResponder.php`, `src/engine/BMInterface*.php` (behaviour), and `src/ui/js/` (how the official site does it, e.g. `Env.prepareRawTextForDisplay` for forum markup).
 - Cite what you relied on (file and function) in `design.md`.
 - It's BSD-licensed: learn from it freely, but don't copy code into this repo without keeping its copyright notice.
+
+## Drafting a spec from an idea
+
+When a dev asks you to turn an idea (usually an issue) into a spec:
+
+1. Pick a short kebab-case name and create only `openspec/changes/<name>/proposal.md` and its spec deltas (`specs/<capability>/spec.md`). Use `openspec instructions proposal --change <name>` and `openspec instructions specs --change <name>`.
+2. Keep requirements implementation-neutral, with SHALL/MUST, and make every scenario testable (WHEN/THEN). Check upstream behaviour (see "Button Men source of truth") so the spec matches how buttonweavers actually works.
+3. Put the dev's technical ideas under `## Suggestions` in the proposal, not in requirements, unless the dev said they're required.
+4. Write no code, no `design.md` or `tasks.md`, and don't archive; that happens when the change is implemented.
+5. `openspec validate <name> --strict` must pass. In the pull request, list anything in the idea you were unsure how to specify, as questions for the dev.
 
 ## Implementing a spec change
 
