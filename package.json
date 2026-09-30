@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "dev": "npx -y wrangler@4 dev",
-    "deploy": "npx -y wrangler@4 deploy"
+    "build": "node scripts/build-specs.js",
+    "dev": "npm run build && npx -y wrangler@4 dev",
+    "deploy": "npm run build && npx -y wrangler@4 deploy"
   }
 }

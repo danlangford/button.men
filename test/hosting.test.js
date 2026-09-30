@@ -38,5 +38,6 @@ test('hosting: served at button.men', () => {
 test('hosting: Deploying - pushes to main deploy automatically', () => {
   const workflow = read('.github/workflows/deploy.yml');
   assert.match(workflow, /push:\s*\n\s*branches: \[main\]/);
-  assert.match(workflow, /wrangler@4 deploy/);
+  assert.match(workflow, /npm run deploy/);
+  assert.match(read('package.json'), /npm run build && npx -y wrangler@4 deploy/);
 });

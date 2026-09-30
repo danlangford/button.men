@@ -18,6 +18,7 @@ import {
   renderForumThread,
 } from '../public/js/forum.js';
 import { resolveTheme, saveChoice, storedChoice } from '../public/js/theme.js';
+import { filterSpecs, renderSpecs } from '../public/js/specs.js';
 import { read } from './helpers.js';
 
 const games = {
@@ -64,12 +65,41 @@ function allElements(element) {
 }
 
 test('web-ui: Narrow screen - pages are responsive', () => {
-  for (const page of ['public/index.html', 'public/about.html']) {
+  for (const page of ['public/index.html', 'public/about.html', 'public/specs.html']) {
     const html = read(page);
     assert.match(html, /<meta name="viewport" content="width=device-width, initial-scale=1">/);
     assert.match(html, /bootstrap@5\.3\.\d+\/dist\/css\/bootstrap\.min\.css/);
     assert.doesNotMatch(html, /[^-]width:\s*\d{3,}px/);
   }
+});
+
+test('web-ui: Specs - feature list is searchable and reachable from the site', () => {
+  const specs = [
+    { name: 'api-proxy', content: 'Credentials are never kept.' },
+    { name: 'web-ui', content: 'The layout supports dark mode.' },
+  ];
+  assert.deepEqual(filterSpecs(specs, 'CREDENTIALS'), [specs[0]]);
+  assert.deepEqual(filterSpecs(specs, '  '), specs);
+  assert.deepEqual(filterSpecs(specs, 'missing'), []);
+  assert.match(read('public/index.html'), /href="\/specs\.html">Specs<\/a>/);
+  assert.match(read('public/specs.html'), /id="spec-search"/);
+  assert.match(read('public/specs.html'), /id="spec-index"/);
+});
+
+test('web-ui: Specs - feature links are shareable and spec text is safe', () => {
+  const document = fakeDocument();
+  const index = document.createElement('nav');
+  const list = document.createElement('section');
+  const status = document.createElement('p');
+  const content = '<img src=x onerror=alert(1)>';
+  renderSpecs([{ name: 'api-proxy', content }], index, list, status, document);
+  const link = allElements(index).find((element) => element.tagName === 'a');
+  const details = allElements(list).find((element) => element.tagName === 'details');
+  const pre = allElements(list).find((element) => element.tagName === 'pre');
+  assert.equal(link.href, '#spec-api-proxy');
+  assert.equal(details.id, 'spec-api-proxy');
+  assert.equal(pre.textContent, content);
+  assert.deepEqual(pre.children, []);
 });
 
 test('web-ui: Device in dark mode - auto follows the device', () => {
