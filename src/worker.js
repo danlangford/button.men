@@ -11,7 +11,7 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
     if (url.pathname === '/api/responder') {
-      return proxy(request);
+      return proxy(request, env.BUTTONWEAVERS_API_ENDPOINT || undefined);
     }
     return env.ASSETS.fetch(request);
   },

@@ -40,6 +40,24 @@ test('api-proxy: Any API call - body and response pass through unchanged', async
   assert.equal(await response.text(), reply);
 });
 
+test('api-proxy: configured preview endpoint is used instead of the production default', async () => {
+  fakeUpstream('{"status":"ok"}');
+  await worker.fetch(apiRequest('{"type":"loadActiveGames"}'), {
+    BUTTONWEAVERS_API_ENDPOINT: 'https://staging.buttonweavers.example/api/responder',
+  });
+  assert.equal(sent.url, 'https://staging.buttonweavers.example/api/responder');
+});
+
+test('api-proxy: request data cannot select the upstream endpoint', async () => {
+  const body = '{"type":"loadActiveGames","apiTarget":"https://attacker.example"}';
+  fakeUpstream('{"status":"ok"}');
+  await worker.fetch(apiRequest(body), {
+    BUTTONWEAVERS_API_ENDPOINT: 'https://staging.buttonweavers.example/api/responder',
+  });
+  assert.equal(sent.url, 'https://staging.buttonweavers.example/api/responder');
+  assert.equal(sent.body, body);
+});
+
 test('api-proxy: only POST is relayed', async () => {
   const response = await proxy(new Request('https://button.men/api/responder'));
   assert.equal(response.status, 405);

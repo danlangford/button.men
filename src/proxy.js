@@ -4,7 +4,7 @@
 export const UPSTREAM = 'https://www.buttonweavers.com/api/responder';
 export const USER_AGENT = 'button.men-proxy/1.0 (+https://github.com/danlangford/button.men)';
 
-export async function proxy(request) {
+export async function proxy(request, upstreamUrl = UPSTREAM) {
   if (request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405, headers: { Allow: 'POST' } });
   }
@@ -18,7 +18,7 @@ export async function proxy(request) {
   const ip = request.headers.get('CF-Connecting-IP');
   if (ip) headers['X-Forwarded-For'] = ip;
 
-  const upstream = await fetch(UPSTREAM, {
+  const upstream = await fetch(upstreamUrl, {
     method: 'POST',
     headers,
     body: await request.text(),
