@@ -7,7 +7,7 @@ Reviewers currently have to build or imagine proposed changes locally to try the
 ## What Changes
 
 - Deploy each pull request to a distinct, stable `pr<number>.button.men` preview site.
-- Keep a preview available while its pull request is open, and provide automatic and explicit triggers to tear it down after review.
+- Keep a preview available while its pull request is active, tear it down when the pull request closes or is merged, after 14 days without new commits, or by explicit trigger, and redeploy it on a subsequent push.
 - Use the production Buttonweavers API for previews by default, with deployment-specific configuration for selected non-production endpoints.
 - Keep preview hosting within the existing $0 cost constraint.
 
@@ -29,4 +29,3 @@ Likely affected areas include pull-request deployment automation, preview hostna
 ## Suggestions
 
 - Consider Cloudflare first because production already uses it; consider another service only if it better meets the requirements without introducing costs.
-
