@@ -26,6 +26,7 @@
         <a class="btn btn-sm btn-outline-primary" href="/specs/">Specifications</a>
         <span id="player" class="text-body-secondary"></span>
         <a id="forum-link" href="#!" class="btn btn-sm btn-outline-primary" hidden>Forum</a>
+        <a id="search-link" href="#search" class="btn btn-sm btn-outline-primary" hidden>Search</a>
         <a id="games-link" href="#games" class="btn btn-sm btn-outline-primary" hidden>Games</a>
         <select id="theme" class="form-select form-select-sm w-auto" aria-label="Theme">
           <option value="auto">Auto</option>
@@ -67,6 +68,71 @@
 
     <section id="forum-view" hidden>
       <div id="forum-content"></div>
+    </section>
+
+    <section id="search-view" hidden>
+      <h1 class="h4 mb-3">Search games</h1>
+      <form id="search-form" class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <label for="search-gameId" class="form-label">Game ID</label>
+          <input id="search-gameId" name="gameId" type="number" min="1" class="form-control">
+        </div>
+        <div class="col-6 col-md-3">
+          <label for="search-status" class="form-label">Status</label>
+          <select id="search-status" name="status" class="form-select">
+            <option value="">Any</option>
+            <option value="ACTIVE">Active</option>
+            <option value="UNSTARTED">Unstarted</option>
+            <option value="COMPLETE">Complete</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <label for="search-winningPlayer" class="form-label">Winner</label>
+          <select id="search-winningPlayer" name="winningPlayer" class="form-select">
+            <option value="">Any</option>
+            <option value="A">Player</option>
+            <option value="B">Opponent</option>
+            <option value="Tie">Tie</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3"></div>
+        <div class="col-6 col-md-3">
+          <label for="search-playerNameA" class="form-label">Player</label>
+          <input id="search-playerNameA" name="playerNameA" class="form-control">
+        </div>
+        <div class="col-6 col-md-3">
+          <label for="search-buttonNameA" class="form-label">Button</label>
+          <input id="search-buttonNameA" name="buttonNameA" class="form-control">
+        </div>
+        <div class="col-6 col-md-3">
+          <label for="search-playerNameB" class="form-label">Opponent</label>
+          <input id="search-playerNameB" name="playerNameB" class="form-control">
+        </div>
+        <div class="col-6 col-md-3">
+          <label for="search-buttonNameB" class="form-label">Opponent's button</label>
+          <input id="search-buttonNameB" name="buttonNameB" class="form-control">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Game started</label>
+          <div class="d-flex gap-2">
+            <input name="gameStartFrom" type="date" class="form-control" aria-label="Game started from">
+            <input name="gameStartTo" type="date" class="form-control" aria-label="Game started to">
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Last move</label>
+          <div class="d-flex gap-2">
+            <input name="lastMoveFrom" type="date" class="form-control" aria-label="Last move from">
+            <input name="lastMoveTo" type="date" class="form-control" aria-label="Last move to">
+          </div>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary" type="submit">Search</button>
+        </div>
+      </form>
+      <div id="search-results"></div>
+      <p class="small text-body-secondary mt-3">Results open on buttonweavers.com.</p>
     </section>
   </main>
 
