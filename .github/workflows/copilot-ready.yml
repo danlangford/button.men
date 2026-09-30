@@ -15,6 +15,8 @@ jobs:
       github.event.pull_request.user.login == 'Copilot'
     runs-on: ubuntu-latest
     permissions:
+      # Marking ready also needs contents: write (see cli/cli#8910).
+      contents: write
       pull-requests: write
     steps:
       - run: gh pr ready "$PR" --repo "$REPO"
