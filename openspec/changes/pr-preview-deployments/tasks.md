@@ -13,4 +13,4 @@
 
 ## 3. Integration and verification
 
-- [ ] 3.1 Run `npm test` and `openspec validate pr-preview-deployments --strict`; verify no production deployment or API target behavior changes.
+- [x] 3.1 Run `npm test` and `openspec validate pr-preview-deployments --strict`; verify no production deployment or API target behavior changes.

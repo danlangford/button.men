@@ -23,7 +23,7 @@ Production is a Cloudflare Worker serving static assets and forwarding `/api/res
 
 ### Use a trusted `pull_request_target` workflow
 
-The preview workflow will be defined on the base branch and triggered by `pull_request_target`. It will check out the base revision for the workflow and deployment helper, and separately check out the PR head into a data-only directory. The workflow will not run `npm install`, `npm ci`, package scripts, or use the PR's `wrangler.jsonc`; a trusted helper will generate the Wrangler configuration and use only the PR Worker entrypoint and static assets as deployment input. Wrangler bundles and uploads that input but does not execute the deployed Worker on the runner. Cloudflare credentials will be exposed only to the trusted deployment or cleanup step, never to a workflow running PR-branch code.
+The preview workflow will be defined on the base branch and triggered by `pull_request_target`. It will check out the base revision for the workflow and deployment helper, and separately check out the PR head into a data-only directory. The workflow will not run `npm install`, `npm ci`, package scripts, or use the PR's `wrangler.jsonc`; a trusted helper will generate the Wrangler configuration and use only the PR Worker entrypoint and static assets as deployment input. Wrangler bundles and uploads that input but does not execute the deployed Worker on the runner. Cloudflare credentials will be exposed only to the trusted deployment or cleanup step, never to a workflow running PR-branch code. Since the Cloudflare token cannot be restricted to one Worker, it will be stored only in the `preview` GitHub Environment and passed to the trusted helper step, not to checkout steps or PR-triggered workflows.
 
 Cloudflare Git integration was considered. It avoids passing a Cloudflare token through GitHub Actions, but the chosen workflow makes the required exact `pr<number>.button.men` route, per-preview API target, inactivity cleanup, and explicit teardown behavior directly manageable. The workflow's trust boundary is deliberately independent of PR scripts and configuration.
 
@@ -58,8 +58,7 @@ Adopt the proposal's Cloudflare suggestion because the production site already r
 
 ## Owner Setup
 
-- In Cloudflare, ensure `button.men` is an active zone and create one proxied wildcard DNS record for `*.button.men` pointing to a non-production placeholder origin. The Worker routes intercept configured PR hosts.
+- In Cloudflare, ensure `button.men` is an active zone and create one proxied A record for `*.button.men` pointing to the non-production placeholder address `192.0.2.1`. The exact Worker routes intercept configured PR hosts.
 - Create a Cloudflare API token with the minimum required account Worker script edit and zone Worker route edit permissions for the `button.men` zone. Do not use a token with unrelated account permissions.
 - In GitHub, create a `preview` environment, restrict its deployment branch to `main`, and add `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_ZONE_ID` environment secrets. Do not make these repository-wide secrets.
 - Optionally add the repository variable `PREVIEW_API_TARGETS` as a JSON object such as `{"123":"https://staging.example/api/responder"}`. Only maintainers should edit this setting.
-

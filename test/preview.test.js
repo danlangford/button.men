@@ -164,6 +164,8 @@ test('preview workflow uses pull_request_target and does not run PR scripts or W
   assert.match(workflow, /path: pr-source/);
   assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
   assert.doesNotMatch(workflow, /npm (?:ci|install|run)|wrangler\.jsonc/);
+  const checkoutSteps = workflow.slice(workflow.indexOf('path: pr-source'), workflow.indexOf('run: node scripts/preview.js deploy'));
+  assert.doesNotMatch(checkoutSteps, /secrets\.CLOUDFLARE_API_TOKEN/);
   assert.match(workflow, /CLOUDFLARE_API_TOKEN: \$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/);
   assert.match(read('scripts/preview.js'), /routes: \[\{ pattern: preview\.route, zone_name: PREVIEW_DOMAIN \}\]/);
 });
