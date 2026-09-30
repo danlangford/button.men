@@ -7,13 +7,13 @@
 
 ## 2. Specification viewer
 
-- [ ] 2.1 Add a responsive `/specs/` view that presents current specifications by feature and requirement; verify the page has a viewport and accessible controls.
-- [ ] 2.2 Add case-insensitive search with matching feature, requirement, and context; verify matching, capitalization differences, and no-results behavior.
-- [ ] 2.3 Add shareable feature and requirement links; verify direct fragments resolve to the matching rendered sections.
-- [ ] 2.4 Add viewer tests covering source-text-safe rendering, search, and link generation.
+- [x] 2.1 Add a responsive `/specs/` view that presents current specifications by feature and requirement; verify the page has a viewport and accessible controls.
+- [x] 2.2 Add case-insensitive search with matching feature, requirement, and context; verify matching, capitalization differences, and no-results behavior.
+- [x] 2.3 Add shareable feature and requirement links; verify direct fragments resolve to the matching rendered sections.
+- [x] 2.4 Add viewer tests covering source-text-safe rendering, search, and link generation.
 
 ## 3. Build and site integration
 
-- [ ] 3.1 Run content generation for local Wrangler development and production deployment; verify both workflows build the generated asset before serving it.
-- [ ] 3.2 Link the specification view from the existing site and verify visitors can discover it without signing in.
-- [ ] 3.3 Run `npm test` and `openspec validate --all --strict` and verify both pass.
+- [x] 3.1 Run content generation for local Wrangler development and production deployment; verify both workflows build the generated asset before serving it.
+- [x] 3.2 Link the specification view from the existing site and verify visitors can discover it without signing in.
+- [x] 3.3 Run `npm test` and `openspec validate --all --strict` and verify both pass.

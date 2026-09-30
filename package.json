@@ -3,8 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node scripts/build-specs.js",
+    "predev": "npm run build",
     "test": "node --test",
     "dev": "npx -y wrangler@4 dev",
+    "predeploy": "npm run build",
     "deploy": "npx -y wrangler@4 deploy"
   }
 }
