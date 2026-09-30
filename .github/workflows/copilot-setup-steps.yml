@@ -27,8 +27,11 @@ jobs:
       - name: Install OpenSpec
         run: npm install -g @fission-ai/openspec@1
 
-      - name: Pre-download Wrangler for npm run dev
-        run: npx -y wrangler@4 --version
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify pinned Wrangler
+        run: npm exec -- wrangler --version
 
       - name: Clone Button Men upstream for reference (see AGENTS.md)
         run: git clone --depth 1 https://github.com/buttonmen-dev/buttonmen /tmp/buttonmen

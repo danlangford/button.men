@@ -32,6 +32,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install trusted locked dependencies
+        if: github.event.action != 'closed' && github.event.pull_request.head.repo != null
+        run: npm ci
+
       - uses: actions/checkout@v6
         if: github.event.action != 'closed' && github.event.pull_request.head.repo != null
         with:
@@ -39,10 +47,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           path: pr-source
           persist-credentials: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
 
       - name: Deploy preview from PR source
         if: github.event.action != 'closed' && github.event.pull_request.head.repo != null

@@ -26,7 +26,7 @@ The workflow itself is specified in [`openspec/specs/development-workflow/spec.m
 
 ## Develop
 
-Needs Node 20+. No dependencies to install.
+Needs Node 20+. Run `npm ci` to install the locked dependencies.
 
 - `npm test` runs the tests.
 - `npm run dev` serves the site at http://localhost:8787, relaying to the real buttonweavers.

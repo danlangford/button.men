@@ -177,7 +177,8 @@ async function createDeployment(preview, sha) {
 
 function runWrangler(configPath) {
   return new Promise((resolve, reject) => {
-    const child = spawn('npx', ['--yes', 'wrangler@4', 'deploy', '--config', configPath], {
+    const wrangler = path.join(process.cwd(), 'node_modules', '.bin', 'wrangler');
+    const child = spawn(wrangler, ['deploy', '--config', configPath], {
       cwd: process.cwd(),
       env: process.env,
       stdio: 'inherit',

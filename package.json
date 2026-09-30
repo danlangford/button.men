@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "dev": "npx -y wrangler@4 dev",
-    "deploy": "npx -y wrangler@4 deploy"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.145.0"
   }
 }
