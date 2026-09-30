@@ -6,16 +6,21 @@ How Button Men works, including its API, is defined by its source code: [buttonm
 
 ## How this repo works
 
-The specs in [`openspec/`](openspec/) are the source of truth. Devs edit specs; an AI agent implements them.
+The specs in [`openspec/`](openspec/) are the source of truth. Devs own the specs; an AI agent (currently the Copilot cloud agent) drafts and implements them.
 
-1. **A dev opens a spec PR** from a branch like `spec/<name>` into `main`. Either edit a living spec in `openspec/specs/` directly, or add a change in `openspec/changes/<name>/` (by hand, or with `/opsx:propose`). Put technical ideas you want considered, but not required, under `## Suggestions` in the proposal; the agent must answer each one in `design.md`.
-2. **The dev hands it to the agent** (currently the Copilot cloud agent): open an issue like "Implement OpenSpec change `<name>`", assign it to Copilot, and pick `spec/<name>` as the **base branch**.
-3. **The agent opens its own PR into `spec/<name>`**, with code and tests, and archives the change so `openspec/specs/` matches what shipped. When done it asks the dev for a review, and `copilot-ready.yml` takes the PR out of draft (Copilot isn't allowed to). Anything it can't do becomes an [`owner-task`](../../issues?q=is%3Aopen+label%3Aowner-task) issue.
-4. **The dev reviews and merges the agent's PR into `spec/<name>`**, then merges the spec PR into `main`, which deploys. `main` never has specs that aren't built.
+**The usual way: one issue, one PR**
 
-Follow-ups: comment `@copilot ...` on the agent's PR.
+1. **File the idea:** new issue → **Idea** template. Rough is fine; put tech ideas you want considered under Suggestions.
+2. **Get a spec draft:** assign the issue to Copilot with the **Assign agent** dialog (agent **OpenSpec**, base branch `main`). It opens a PR into `main` containing only `openspec/changes/<name>/`, and asks for your review. (`copilot-ready.yml` takes Copilot's PRs out of draft, since Copilot isn't allowed to.)
+3. **Shape the spec:** edit it, or comment `@copilot …` until it reads right.
+4. **Approve and implement:** comment `@copilot the spec looks great, implement it on this branch, following AGENTS.md "Implementing a spec change"`. The design, code, tests and archive arrive as more commits on the same PR. Anything it can't do becomes an [`owner-task`](../../issues?q=is%3Aopen+label%3Aowner-task) issue.
+5. **Review and merge the PR** into `main`, which deploys. `main` never has specs that aren't built.
 
-**Starting from an idea instead:** open an issue with the **Idea** template and assign it to Copilot with the **OpenSpec** custom agent, base branch `main`. Its PR drafts the change (proposal and spec deltas only). Edit it until it's right; that PR is your spec PR. Then hand it off as in step 2, using the draft PR's branch as the base.
+To review just the implementation, pick the commits after your approval comment in the PR's "Changes from" menu.
+
+**Alternative: you write the spec**
+
+Open a spec PR yourself from `spec/<name>` into `main` (edit `openspec/specs/` directly, or add `openspec/changes/<name>/`). Then open an issue "Implement OpenSpec change `<name>`", assign it to Copilot with `spec/<name>` as the **base branch**, and it stacks its own PR on yours. Merge its PR into your branch, then yours into `main` (or merge the stack).
 
 The workflow itself is specified in [`openspec/specs/development-workflow/spec.md`](openspec/specs/development-workflow/spec.md). See [`AGENTS.md`](AGENTS.md) for the agent's rules.
 
