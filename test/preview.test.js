@@ -161,6 +161,9 @@ test('preview workflow uses pull_request_target and does not run PR scripts or W
   assert.match(workflow, /types: \[opened, reopened, synchronize, closed\]/);
   assert.match(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /^\s+pull_request:/m);
+  const deployCondition = 'github.event.action != \'closed\' && github.event.pull_request.head.repo.full_name == github.repository';
+  assert.equal(workflow.split(deployCondition).length - 1, 3);
+  assert.match(workflow, /name: Remove closed PR preview\n\s+if: github\.event\.action == 'closed'/);
   assert.ok(workflow.indexOf('run: npm ci') < workflow.indexOf('path: pr-source'));
   assert.match(workflow, /path: pr-source/);
   assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
