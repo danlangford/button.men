@@ -6,9 +6,11 @@ import {
   forumThread,
   login,
   logout,
+  searchGameHistory,
 } from './api.js';
 import { gameList } from './games.js';
 import { renderForumBoard, renderForumOverview, renderForumThread } from './forum.js';
+import { applyParamsToForm, paramsFromForm, renderSearchResults, searchArgsFromParams } from './search.js';
 import { resolveTheme, saveChoice, storedChoice } from './theme.js';
 
 const $ = (id) => document.getElementById(id);
@@ -24,9 +26,11 @@ function show(view, player = '') {
   $('login-view').hidden = view !== 'login';
   $('games-view').hidden = view !== 'games';
   $('forum-view').hidden = view !== 'forum';
+  $('search-view').hidden = view !== 'search';
   $('player').textContent = player;
   $('forum-link').hidden = view === 'login';
   $('games-link').hidden = view === 'login';
+  $('search-link').hidden = view === 'login';
   $('logout').hidden = view === 'login';
 }
 
@@ -106,15 +110,49 @@ async function showForum(player) {
   }
 }
 
+function hashQuery() {
+  const hash = window.location.hash;
+  const qIndex = hash.indexOf('?');
+  return qIndex === -1 ? '' : hash.slice(qIndex + 1);
+}
+
+async function showSearch(player) {
+  const request = ++viewRequest;
+  show('search', player);
+  showError('');
+  const params = new URLSearchParams(hashQuery());
+  applyParamsToForm($('search-form'), params);
+  const results = $('search-results');
+  if ([...params.keys()].length === 0) {
+    results.replaceChildren();
+    return;
+  }
+  try {
+    const data = await searchGameHistory(searchArgsFromParams(params));
+    if (request !== viewRequest) return;
+    renderSearchResults(results, data, params);
+  } catch (error) {
+    if (request === viewRequest) throw error;
+  }
+}
+
+function currentView() {
+  if (window.location.hash.startsWith('#!')) return 'forum';
+  if (window.location.hash.startsWith('#search')) return 'search';
+  return 'games';
+}
+
+function showView(view, player) {
+  if (view === 'forum') return showForum(player);
+  if (view === 'search') return showSearch(player);
+  return showGames(player);
+}
+
 async function start() {
   const player = await currentPlayer();
   signedInPlayer = player;
   if (player) {
-    if (window.location.hash.startsWith('#!')) {
-      await showForum(player);
-    } else {
-      await showGames(player);
-    }
+    await showView(currentView(), player);
   } else {
     viewRequest++;
     show('login');
@@ -152,11 +190,14 @@ $('logout').addEventListener('click', async () => {
 
 window.addEventListener('hashchange', () => {
   if (!signedInPlayer) return;
-  if (window.location.hash.startsWith('#!')) {
-    showForum(signedInPlayer).catch((error) => showError(error.message));
-  } else {
-    showGames(signedInPlayer).catch((error) => showError(error.message));
-  }
+  showView(currentView(), signedInPlayer).catch((error) => showError(error.message));
+});
+
+$('search-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const params = paramsFromForm(event.target);
+  window.location.hash = `#search?${params.toString()}`;
+  showSearch(signedInPlayer).catch((error) => showError(error.message));
 });
 
 start().catch((error) => showError(error.message));

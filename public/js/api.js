@@ -51,3 +51,9 @@ export async function forumThread(threadId, currentPostId, call = callApi) {
   }
   return forumRequest(args, call);
 }
+
+export async function searchGameHistory(args, call = callApi) {
+  const result = await call({ type: 'searchGameHistory', ...args });
+  if (result.status !== 'ok') throw new Error(result.message || 'Game search failed');
+  return result.data;
+}
