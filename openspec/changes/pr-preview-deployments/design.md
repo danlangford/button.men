@@ -39,6 +39,10 @@ Create a GitHub Deployment for each preview update, with an environment name der
 
 The Worker proxy will continue to use the production endpoint when no deployment variable is set. A GitHub repository variable named `PREVIEW_API_TARGETS` may contain a JSON object mapping PR numbers to non-production Buttonweavers responder URLs. The trusted helper selects only the entry matching the current PR and injects it as a Worker variable. Requests cannot select or override the endpoint. An absent mapping leaves that preview on production, and does not affect any other preview or production.
 
+### Reject cross-origin API requests
+
+The Worker will require the browser `Origin` to exactly match the request URL origin before forwarding `/api/responder`. This preserves the front end's same-origin POSTs while preventing untrusted code on a preview subdomain from issuing credentialed same-site requests to the production host.
+
 ### Adopt Cloudflare; no paid services
 
 Adopt the proposal's Cloudflare suggestion because the production site already runs there and Worker routes can provide the requested hostnames. Use only existing free-plan Worker/static asset and DNS capabilities. If free-plan limits prevent a preview, the deployment fails without upgrading or incurring charges.

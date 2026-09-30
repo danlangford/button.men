@@ -21,7 +21,7 @@ function fakeUpstream(body, setCookies = []) {
 function apiRequest(body, headers = {}) {
   return new Request('https://button.men/api/responder', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...headers },
+    headers: { Origin: 'https://button.men', 'Content-Type': 'application/x-www-form-urlencoded', ...headers },
     body,
   });
 }
@@ -56,6 +56,13 @@ test('api-proxy: request data cannot select the upstream endpoint', async () => 
   });
   assert.equal(sent.url, 'https://staging.buttonweavers.example/api/responder');
   assert.equal(sent.body, body);
+});
+
+test('api-proxy: cross-origin requests cannot send credentials through a preview to production', async () => {
+  fakeUpstream('{"status":"ok"}');
+  const response = await worker.fetch(apiRequest('{}', { Origin: 'https://pr21.button.men' }), {});
+  assert.equal(response.status, 403);
+  assert.equal(sent, undefined);
 });
 
 test('api-proxy: only POST is relayed', async () => {

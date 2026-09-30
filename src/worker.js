@@ -11,6 +11,9 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
     if (url.pathname === '/api/responder') {
+      if (request.headers.get('Origin') !== url.origin) {
+        return new Response('Forbidden', { status: 403, headers: { 'Cache-Control': 'no-store' } });
+      }
       return proxy(request, env.BUTTONWEAVERS_API_ENDPOINT || undefined);
     }
     return env.ASSETS.fetch(request);

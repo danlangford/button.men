@@ -5,6 +5,7 @@
 - [x] 1.1 Allow the API proxy to receive an endpoint from Worker deployment configuration while retaining the production default; add tests for the default, configured target, and request-body override attempt.
 - [x] 1.2 Add a trusted preview deployment helper and `pull_request_target` workflow that deploys a dedicated Worker and exact PR hostname without running PR scripts/config; add tests for generated configuration and verify the workflow uses base-branch deployment logic.
 - [x] 1.3 Add per-PR API endpoint selection from trusted deployment configuration and verify an unmapped PR defaults to production while mapped PRs remain isolated.
+- [x] 1.4 Reject API requests whose browser Origin differs from the Worker request origin; verify same-origin requests still pass through and preview-to-production requests are rejected.
 
 ## 2. Preview teardown and inactivity
 
