@@ -2,33 +2,47 @@
 
 ## Purpose
 
-How spec changes become shipped code in this repo: a dev proposes a spec change in a pull request, hands it to an AI agent, reviews the agent's pull request into the spec branch, and merges both.
+How ideas and spec changes become shipped code in this repo: usually a dev files an idea, an AI agent drafts the spec in a pull request, the dev approves it there, and the agent implements it on the same pull request.
 
 ## Requirements
 
 ### Requirement: Spec changes arrive as pull requests
-Every change to behaviour SHALL start as a pull request, from a spec branch, that changes files under `openspec/`.
+Every change to behaviour SHALL reach `main` through a pull request that changes files under `openspec/`, whether a dev writes the spec or an agent drafts it.
 
-#### Scenario: A dev proposes a change
-- **WHEN** a dev pushes a spec branch that changes `openspec/` and opens a pull request into `main`
+#### Scenario: A change is proposed
+- **WHEN** a pull request adds or changes files under `openspec/`
 - **THEN** the pull request shows the proposed spec change and CI validates it
 
-### Requirement: Handing a change to the agent
-A dev SHALL hand a spec change to the agent by asking it to implement that change, with the spec branch as the base.
+### Requirement: Drafting a spec from an idea
+A dev SHALL be able to hand the agent a rough idea and get back a spec draft, with no implementation.
 
-#### Scenario: Handing off
+#### Scenario: Idea handed to the agent
+- **WHEN** a dev assigns an "Idea: …" issue to the agent
+- **THEN** the agent opens a pull request into `main` containing only the drafted spec change, and asks the dev for a review
+
+### Requirement: The dev approves the spec before implementation
+The agent SHALL NOT implement a drafted spec until a dev explicitly asks it to, and SHALL then implement it on the same pull request.
+
+#### Scenario: Dev approves on the pull request
+- **WHEN** a dev comments on the spec-draft pull request asking the agent to implement it
+- **THEN** the agent adds the implementation as further commits on that pull request's branch, without opening another pull request
+
+#### Scenario: No approval yet
+- **WHEN** the dev hasn't asked for implementation
+- **THEN** the pull request contains no implementation code
+
+### Requirement: Stacked implementation as an alternative
+When a dev has written a spec pull request themselves, they SHALL be able to hand it to the agent, which then delivers its implementation as its own pull request targeting that spec branch, never `main`.
+
+#### Scenario: Handing off a dev-written spec
 - **WHEN** a dev asks the agent to implement a change and names its spec branch as the base
-- **THEN** the agent starts work on a new branch cut from that spec branch
+- **THEN** the agent opens a pull request that targets the spec branch
 
-### Requirement: Implementation arrives as a pull request into the spec branch
-The agent SHALL deliver its implementation as its own pull request targeting the spec branch, never `main`, so the spec branch stays the dev's.
+### Requirement: Main stays consistent
+Merging SHALL bring a spec and its implementation into `main` together.
 
-#### Scenario: Agent opens its pull request
-- **WHEN** the agent has implemented a change
-- **THEN** its pull request targets the spec branch
-
-#### Scenario: Main stays consistent
-- **WHEN** the dev merges the agent's pull request into the spec branch and then the spec pull request into `main`
+#### Scenario: Merging
+- **WHEN** the spec and its implementation are merged into `main`, as one pull request or a stack
 - **THEN** `main` contains both the spec and the code that implements it, and no unarchived changes
 
 ### Requirement: Ready-for-review notification
