@@ -3,8 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node scripts/build-specs.js",
+    "predev": "npm run build",
     "test": "node --test",
     "dev": "wrangler dev",
+    "predeploy": "npm run build",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
