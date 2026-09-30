@@ -1,0 +1,158 @@
+name: PR preview
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize, closed]
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      pull_number:
+        description: Pull request number to tear down
+        required: true
+        type: number
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    environment: preview
+    concurrency:
+      group: preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install trusted locked dependencies
+        if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+        run: npm ci
+
+      - uses: actions/checkout@v6
+        if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-source
+          persist-credentials: false
+
+      - name: Build preview specifications
+        if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+        run: node scripts/build-specs.js pr-source/openspec/specs pr-source/public/specs/specifications.json
+
+      - name: Deploy preview from PR source
+        if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+        run: node scripts/preview.js deploy
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          PREVIEW_API_TARGETS: ${{ vars.PREVIEW_API_TARGETS }}
+
+      - name: Remove closed PR preview
+        if: github.event.action == 'closed'
+        run: node scripts/preview.js close
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+
+  find_expired:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      pull_numbers: ${{ steps.find.outputs.pull_numbers }}
+    permissions:
+      contents: read
+      deployments: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - id: find
+        name: Find previews inactive for 14 days
+        run: node scripts/preview.js find-expired
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  expire:
+    if: github.event_name == 'schedule'
+    needs: find_expired
+    runs-on: ubuntu-latest
+    environment: preview
+    strategy:
+      fail-fast: false
+      matrix:
+        pull_number: ${{ fromJSON(needs.find_expired.outputs.pull_numbers) }}
+    concurrency:
+      group: preview-${{ matrix.pull_number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Remove expired preview if it is still inactive
+        if: matrix.pull_number != 0
+        run: node scripts/preview.js expire
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PREVIEW_PULL_NUMBER: ${{ matrix.pull_number }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+
+  manual_teardown:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: preview
+    concurrency:
+      group: preview-${{ inputs.pull_number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Remove preview
+        run: node scripts/preview.js delete
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PREVIEW_PULL_NUMBER: ${{ inputs.pull_number }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}

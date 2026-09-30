@@ -1,9 +1,6 @@
-# hosting Specification
+# Spec Delta
 
-## Purpose
-Where button.men runs, what it costs, and what keeping it running asks of the devs.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Runs for free
 The site, including pull request preview deployments, SHALL run at no ongoing cost at expected traffic, and SHALL NOT start charging without a dev's approval.
@@ -16,19 +13,7 @@ The site, including pull request preview deployments, SHALL run at no ongoing co
 - **WHEN** traffic exceeds what is free
 - **THEN** the site degrades or stops rather than incurring charges, and the devs are told
 
-### Requirement: Served at button.men over HTTPS
-The site SHALL be served at `https://button.men`.
-
-#### Scenario: Plain HTTP
-- **WHEN** a player visits `http://button.men`
-- **THEN** they are redirected to `https://button.men`
-
-### Requirement: Nothing to babysit
-The site SHALL NOT need a server that a dev patches or restarts by hand.
-
-#### Scenario: Deploying
-- **WHEN** a change is merged to `main`
-- **THEN** it deploys automatically
+## ADDED Requirements
 
 ### Requirement: Pull request previews have a temporary address and lifecycle
 Each pull request preview SHALL be available at a distinct, stable hostname that identifies its pull request, such as `pr21.button.men`. It SHALL be available while its pull request is active, but SHALL be torn down after 14 days without new commits, when the pull request is closed or merged, or when an authorized maintainer explicitly triggers teardown. A subsequent push to an open pull request SHALL deploy its preview again.

@@ -21,7 +21,7 @@ function fakeUpstream(body, setCookies = []) {
 function apiRequest(body, headers = {}) {
   return new Request('https://button.men/api/responder', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...headers },
+    headers: { Origin: 'https://button.men', 'Content-Type': 'application/x-www-form-urlencoded', ...headers },
     body,
   });
 }
@@ -38,6 +38,31 @@ test('api-proxy: Any API call - body and response pass through unchanged', async
   assert.equal(sent.method, 'POST');
   assert.equal(sent.body, body);
   assert.equal(await response.text(), reply);
+});
+
+test('api-proxy: configured preview endpoint is used instead of the production default', async () => {
+  fakeUpstream('{"status":"ok"}');
+  await worker.fetch(apiRequest('{"type":"loadActiveGames"}'), {
+    BUTTONWEAVERS_API_ENDPOINT: 'https://staging.buttonweavers.example/api/responder',
+  });
+  assert.equal(sent.url, 'https://staging.buttonweavers.example/api/responder');
+});
+
+test('api-proxy: request data cannot select the upstream endpoint', async () => {
+  const body = '{"type":"loadActiveGames","apiTarget":"https://attacker.example"}';
+  fakeUpstream('{"status":"ok"}');
+  await worker.fetch(apiRequest(body), {
+    BUTTONWEAVERS_API_ENDPOINT: 'https://staging.buttonweavers.example/api/responder',
+  });
+  assert.equal(sent.url, 'https://staging.buttonweavers.example/api/responder');
+  assert.equal(sent.body, body);
+});
+
+test('api-proxy: cross-origin requests cannot send credentials through a preview to production', async () => {
+  fakeUpstream('{"status":"ok"}');
+  const response = await worker.fetch(apiRequest('{}', { Origin: 'https://pr21.button.men' }), {});
+  assert.equal(response.status, 403);
+  assert.equal(sent, undefined);
 });
 
 test('api-proxy: only POST is relayed', async () => {

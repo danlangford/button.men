@@ -1,0 +1,69 @@
+# Design
+
+## Context
+
+Production is a Cloudflare Worker serving static assets and forwarding `/api/responder` to a fixed Buttonweavers URL. The existing deploy workflow runs on `main` and uses Cloudflare credentials. Pull request previews must have separate Worker deployments, stable pull-request hostnames, and independently configured API endpoints, while preserving the $0 hosting constraint.
+
+## Goals / Non-Goals
+
+**Goals:**
+
+- Deploy one Cloudflare Worker and exact route per pull request.
+- Keep Cloudflare credentials out of workflows that execute code from pull request branches.
+- Remove previews on PR closure/merge, after 14 days without a new commit, or on an authorized manual request.
+- Let a new commit recreate an expired preview.
+
+**Non-Goals:**
+
+- Automatically test or validate arbitrary PR code before it is deployed.
+- Run PR-provided build scripts, package scripts, or Wrangler configuration.
+- Add paid Cloudflare products or dependencies.
+
+## Decisions
+
+### Use a trusted `pull_request_target` workflow
+
+The preview workflow will be defined on the base branch and triggered by `pull_request_target`. Deployment is allowed only when the PR head repository equals the base repository; fork PRs are never served at a button.men preview hostname. The closed-PR cleanup path remains available regardless of PR source. The workflow checks out the base revision for its helper, installs dependencies from the base revision's lockfile, and separately checks out eligible PR heads into a data-only directory. It will not run PR-provided install commands, package scripts, or use the PR's `wrangler.jsonc`; a trusted helper will generate the Wrangler configuration and use only the PR Worker entrypoint and static assets as deployment input. The trusted specification builder runs against the PR's `openspec/specs/` directory and writes the generated JSON into the PR asset directory before deployment, so the preview includes the same built specification browser as production without executing PR scripts. The exact Wrangler version is installed from the trusted lockfile. Wrangler bundles and uploads that input but does not execute the deployed Worker on the runner. Cloudflare credentials will be exposed only to the trusted deployment or cleanup step, never to a workflow running PR-branch code. Since the Cloudflare token cannot be restricted to one Worker, it will be stored only in the `preview` GitHub Environment and passed to the trusted helper step, not to checkout steps or PR-triggered workflows.
+
+Cloudflare Git integration was considered. It avoids passing a Cloudflare token through GitHub Actions, but the chosen workflow makes the required exact `pr<number>.button.men` route, per-preview API target, inactivity cleanup, and explicit teardown behavior directly manageable. The workflow's trust boundary is deliberately independent of PR scripts and configuration.
+
+### Give each PR its own Worker and route
+
+Use a deterministic Worker name (`button-men-pr-<number>`) and route (`pr<number>.button.men/*`). A trusted config generator supplies the entrypoint, assets path, route, compatibility date, and optional endpoint variable to Wrangler. A single proxied wildcard DNS record provides DNS coverage; exact Worker routes select the matching preview. Cleanup removes the exact route before deleting the Worker so a dangling route cannot remain.
+
+### Track inactivity with GitHub Deployments
+
+Create a GitHub Deployment for each preview update, with an environment name derived from the PR number, and record success/failure status. A daily trusted workflow checks open PRs and their latest deployment creation time. After 14 days without a new preview deployment, it removes the Worker and route and marks the latest deployment inactive. A subsequent PR push creates a new deployment and recreates the preview. Closing or merging a PR invokes the same cleanup path; `workflow_dispatch` provides explicit maintainer teardown.
+
+### Configure API targets per preview
+
+The Worker proxy will continue to use the production endpoint when no deployment variable is set. A GitHub repository variable named `PREVIEW_API_TARGETS` may contain a JSON object mapping PR numbers to non-production Buttonweavers responder URLs. The trusted helper selects only the entry matching the current PR and injects it as a Worker variable. Requests cannot select or override the endpoint. An absent mapping leaves that preview on production, and does not affect any other preview or production.
+
+### Reject cross-origin API requests
+
+The Worker will require the browser `Origin` to exactly match the request URL origin before forwarding `/api/responder`. This preserves the front end's same-origin POSTs while preventing untrusted code on a preview subdomain from issuing credentialed same-site requests to the production host.
+
+### Adopt Cloudflare; no paid services
+
+Adopt the proposal's Cloudflare suggestion because the production site already runs there and Worker routes can provide the requested hostnames. Use only existing free-plan Worker/static asset and DNS capabilities. If free-plan limits prevent a preview, the deployment fails without upgrading or incurring charges.
+
+## Risks / Trade-offs
+
+- [A `pull_request_target` workflow has access to secrets] → Keep its definition and helper on the base branch; do not execute PR-provided scripts/config; scope permissions and environment secrets to deployment/cleanup steps.
+- [PR code is still untrusted when deployed and served] → Expose no deployment credentials or secrets to the Worker runtime, and make clear that previews are for review rather than trusted production use.
+- [Wildcard DNS and exact route configuration require one-time owner setup] → Document the DNS record and token permissions; test one PR preview before relying on automation.
+- [Free-plan concurrency or route quotas may be reached] → Do not add billing; report deployment failure and remove only the affected PR's route/Worker.
+
+## Migration Plan
+
+1. The owner configures the Cloudflare zone, wildcard DNS, and GitHub `preview` environment credentials.
+2. Merge the trusted preview workflow and helper, then open a test PR to confirm the custom hostname, API target, and cleanup.
+3. Existing production deployment remains unchanged. Roll back by disabling the preview workflow and removing preview routes/Workers; do not change the production Worker.
+
+## Owner Setup
+
+- The owner reports that the Cloudflare wildcard DNS record has been created.
+- Create a Cloudflare API token with the minimum required account Worker script edit and zone Worker route edit permissions for the `button.men` zone. Do not use a token with unrelated account permissions.
+- The owner reports that the GitHub `preview` environment has been created. Restrict its deployment branch to `main` and add `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_ZONE_ID` as environment secrets, not repository-wide secrets.
+- The owner reports that the Cloudflare token has Zone read permission. Confirm that it also has account Workers Scripts edit and zone Workers Routes edit permissions.
+- Optionally add the repository variable `PREVIEW_API_TARGETS` as a JSON object such as `{"123":"https://staging.example/api/responder"}`. Only maintainers should edit this setting.

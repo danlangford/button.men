@@ -122,5 +122,5 @@ test('specs viewer: site integration - link is public and builds run before serv
   assert.equal(scripts.predeploy, 'npm run build');
 
   const workflow = read('.github/workflows/deploy.yml');
-  assert.ok(workflow.indexOf('run: npm run build') < workflow.indexOf('run: npx -y wrangler@4 deploy'));
+  assert.ok(workflow.includes('run: npm run deploy'));
 });
