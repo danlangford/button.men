@@ -17,6 +17,15 @@
   <style>
     .forum-post-body { white-space: pre-wrap; }
     .navbar-controls { min-width: 0; }
+    .game-3d-board {
+      height: 18rem;
+      margin-bottom: 1rem;
+      overflow: hidden;
+      border: 1px solid #70472d;
+      border-radius: 1rem;
+      background: #182b29;
+    }
+    .game-3d-board canvas { display: block; width: 100%; height: 100%; }
     @media (max-width: 575.98px) {
       main { min-width: 0; overflow-wrap: anywhere; }
       .navbar-controls {
@@ -33,6 +42,7 @@
       .game-die { min-width: 4rem; overflow-wrap: anywhere; }
       .game-die-value { font-size: 1.5rem; }
       .game-event { overflow-wrap: anywhere; }
+      .game-3d-board { height: 14rem; }
     }
   </style>
 </head>

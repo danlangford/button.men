@@ -486,9 +486,17 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.match(root.textContent, /Poison/);
   assert.match(root.textContent, /hello/);
   assert.doesNotMatch(root.textContent, /attacked/);
+  const scene = allElements(root).find((element) => element.className === 'game-3d-board');
+  assert.ok(scene);
+  assert.equal(scene.getAttribute('aria-hidden'), 'true');
+  const board = allElements(root).find((element) => element.className === 'game-board');
+  assert.match(board.children[0].textContent, /alice/);
+  assert.match(board.children[1].textContent, /dan/);
   const flip = allElements(root).find((element) => element.textContent === 'Flip orientation');
   assert.ok(flip);
   flip.onclick();
+  assert.match(board.children[0].textContent, /dan/);
+  assert.match(board.children[1].textContent, /alice/);
   const all = allElements(root).find((element) => element.textContent === 'All');
   assert.ok(all);
   all.onclick();

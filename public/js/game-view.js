@@ -1,5 +1,8 @@
 import { gameUrl } from './games.js';
 
+let disposeDiceScene = () => {};
+let setDiceOrientation = () => {};
+
 const value = (object, ...keys) => keys.reduce((result, key) => result ?? object?.[key], undefined);
 
 function text(document, tag, content, className = '') {
@@ -103,6 +106,9 @@ function renderActivity(document, root, data, privateChat) {
 }
 
 export function renderGameView(root, data) {
+  disposeDiceScene();
+  disposeDiceScene = () => {};
+  setDiceOrientation = () => {};
   root.replaceChildren();
   const players = list(data.playerDataArray);
   if (players.length < 2) {
@@ -112,6 +118,7 @@ export function renderGameView(root, data) {
   const document = root.ownerDocument;
   const current = Number.isInteger(data.currentPlayerIdx) && data.currentPlayerIdx >= 0 ? data.currentPlayerIdx : null;
   const viewing = current === null ? 0 : current;
+  let bottomPlayerIndex = viewing;
   let flipped = false;
   const board = text(document, 'div', '', 'game-board');
   const controls = text(document, 'div', '', 'd-flex flex-wrap justify-content-between gap-2 mb-3');
@@ -120,7 +127,9 @@ export function renderGameView(root, data) {
   flip.type = 'button';
   flip.addEventListener('click', () => {
     flipped = !flipped;
-    board.replaceChildren(playerAt(0), playerAt(1));
+    board.replaceChildren(playerAt(1), playerAt(0));
+    bottomPlayerIndex = flipped ? 1 - viewing : viewing;
+    setDiceOrientation(bottomPlayerIndex);
   });
   controls.append(flip);
   const action = text(document, 'a', 'Take action on buttonweavers.com', 'btn btn-sm btn-primary');
@@ -130,7 +139,8 @@ export function renderGameView(root, data) {
   controls.append(action);
   root.append(controls, text(document, 'p', `${data.gameState || 'Game'} · Round ${data.roundNumber ?? '—'}`, 'text-body-secondary'));
   function playerAt(slot) {
-    const index = flipped ? 1 - (viewing === slot ? viewing : 1 - viewing) : (viewing === slot ? viewing : 1 - viewing);
+    const bottomPlayer = flipped ? 1 - viewing : viewing;
+    const index = slot === 0 ? bottomPlayer : 1 - bottomPlayer;
     return renderPlayer(
       document,
       players[index],
@@ -140,7 +150,21 @@ export function renderGameView(root, data) {
     );
   }
   board.append(playerAt(1), playerAt(0));
-  root.append(board);
+  const scene = text(document, 'div', '', 'game-3d-board');
+  scene.setAttribute('aria-hidden', 'true');
+  root.append(scene, board);
+  if (document.defaultView) {
+    import('./dice-scene.js').then(({ renderDiceScene }) => {
+      if (!scene.isConnected) return;
+      const instance = renderDiceScene(scene, players, bottomPlayerIndex);
+      if (scene.isConnected) {
+        disposeDiceScene = instance.dispose;
+        setDiceOrientation = instance.setBottomPlayerIndex;
+      } else {
+        instance.dispose();
+      }
+    }).catch(() => scene.remove());
+  }
   const privateChat = current === null && players.some((player) => player.isChatPrivate);
   renderActivity(document, root, data, privateChat);
 }
