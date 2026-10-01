@@ -18,6 +18,14 @@ jobs:
       - name: Validate specs
         run: npx -y @fission-ai/openspec@1 validate --all --strict --no-interactive
 
+      - name: Install
+        if: hashFiles('package.json') != ''
+        run: npm ci
+
+      - name: Lint
+        if: hashFiles('package.json') != ''
+        run: npm run lint
+
       - name: Test
         if: hashFiles('package.json') != ''
-        run: npm ci && npm test
+        run: npm test

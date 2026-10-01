@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const API_UPSTREAM = 'https://www.buttonweavers.com/api/responder';
 const PREVIEW_DOMAIN = 'button.men';
 const COMPATIBILITY_DATE = '2026-05-01';
 const RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
