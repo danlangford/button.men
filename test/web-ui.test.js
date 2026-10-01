@@ -109,6 +109,8 @@ test('web-ui: Narrow screen - pages are responsive', () => {
 
   const html = read('public/index.html');
   assert.match(html, /@media \(max-width: 575\.98px\)/);
+  assert.match(html, /game-play-area \{ height: calc\(100dvh - 11rem\);/);
+  assert.match(html, /@media \(min-width: 576px\) and \(max-height: 700px\)/);
   assert.match(html, /class="navbar-controls d-flex flex-wrap align-items-center gap-2 ms-auto"/);
   assert.match(html, /class="navbar-player text-body-secondary"/);
   assert.match(html, /main \{ min-width: 0; overflow-wrap: anywhere; \}/);
@@ -486,21 +488,41 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.match(root.textContent, /Poison/);
   assert.match(root.textContent, /hello/);
   assert.doesNotMatch(root.textContent, /attacked/);
+  assert.doesNotMatch(root.textContent, /small d-block text-body-secondary/);
   const scene = allElements(root).find((element) => element.className === 'game-3d-board');
   assert.ok(scene);
   assert.equal(scene.getAttribute('aria-hidden'), 'true');
+  const status = allElements(root).find((element) => element.tagName === 'small' && element.textContent === 'attacker');
+  assert.ok(status);
   const board = allElements(root).find((element) => element.className === 'game-board');
+  assert.equal(board.hidden, true);
   assert.match(board.children[0].textContent, /alice/);
   assert.match(board.children[1].textContent, /dan/);
+  const hud = allElements(root).find((element) => element.className === 'game-3d-hud');
+  assert.match(hud.textContent, /Round 2/);
+  assert.match(hud.textContent, /Status: attacker/);
+  const toggle = allElements(root).find((element) => element.textContent === 'Show flat game state');
+  toggle.onclick();
+  assert.equal(allElements(root).find((element) => element.className === 'game-play-area').hidden, true);
+  assert.equal(board.hidden, false);
+  assert.equal(toggle.textContent, 'Show 3D game view');
+  toggle.onclick();
+  assert.equal(allElements(root).find((element) => element.className === 'game-play-area').hidden, false);
+  assert.equal(board.hidden, true);
   const flip = allElements(root).find((element) => element.textContent === 'Flip orientation');
   assert.ok(flip);
   flip.onclick();
   assert.match(board.children[0].textContent, /dan/);
   assert.match(board.children[1].textContent, /alice/);
-  const all = allElements(root).find((element) => element.textContent === 'All');
+  const all = allElements(root).find((element) => element.textContent === 'Chat & Game Log');
   assert.ok(all);
   all.onclick();
   assert.match(root.textContent, /attacked/);
+  const events = allElements(root).filter((element) => element.className?.startsWith('game-event '));
+  assert.match(events[0].textContent, /attacked/);
+  assert.match(events[1].textContent, /hello/);
+  assert.ok(allElements(root).some((element) => element.textContent === 'Chat'));
+  assert.ok(allElements(root).some((element) => element.textContent === 'Game Log'));
 });
 
 test('web-ui: Reach game search - one search link and nav wiring reach the search view', () => {

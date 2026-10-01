@@ -35,7 +35,43 @@ function renderDie(document, die, captured = false) {
     text(document, 'span', `d${info.sides || info.recipe}`, 'small'),
   );
   if (info.skills) card.append(text(document, 'span', info.skills, 'small d-block'));
-  if (info.statuses) card.append(text(document, info.statuses, 'small d-block text-body-secondary'));
+  if (info.statuses) card.append(text(document, 'small', info.statuses, 'd-block text-body-secondary'));
+  return card;
+}
+
+function renderHudPlayer(document, player, active, initiative, position) {
+  const button = player.button || {};
+  const card = text(document, 'article', '', `game-hud-player game-hud-player-${position}`);
+  card.append(text(document, 'strong', player.playerName || `Player ${position + 1}`, 'game-hud-name'));
+  card.append(text(document, 'div', `${button.name || 'Unnamed button'}${button.recipe ? ` · ${button.recipe}` : ''}`));
+  card.append(text(
+    document,
+    'div',
+    `Round ${player.roundScore ?? 0} · Match ${list(player.gameScoreArray).join('-') || (player.sideScore ?? 0)}`,
+  ));
+  const buttonSkills = list(value(button, 'skillArray', 'skills')).join(', ');
+  if (buttonSkills) card.append(text(document, 'div', `Button skills: ${buttonSkills}`));
+  if (active) card.append(text(document, 'span', 'Active player', 'badge text-bg-primary me-1'));
+  if (initiative) card.append(text(document, 'span', 'Initiative', 'badge text-bg-warning'));
+
+  for (const [label, dice] of [
+    ['Active dice', player.activeDieArray],
+    ['Captured dice', player.capturedDieArray],
+    ['Out of play dice', player.outOfPlayDieArray],
+  ]) {
+    if (!list(dice).length) continue;
+    const group = text(document, 'div', '', 'game-hud-dice');
+    group.append(text(document, 'strong', `${label}: `));
+    group.append(text(document, 'span', list(dice).map((die) => {
+      const info = dieLabel(die);
+      return [
+        `${info.rolled ?? '—'} · d${info.sides || info.recipe}`,
+        info.skills && `Skills: ${info.skills}`,
+        info.statuses && `Status: ${info.statuses}`,
+      ].filter(Boolean).join(' · ');
+    }).join('  |  ')));
+    card.append(group);
+  }
   return card;
 }
 
@@ -75,7 +111,7 @@ function renderActivity(document, root, data, privateChat) {
   const controls = text(document, 'div', '', 'btn-group mb-3');
   const stream = text(document, 'div', '', 'game-activity');
   const entries = [...entry(data.gameActionLog, 'action'), ...entry(data.gameChatLog, 'chat')]
-    .sort((a, b) => a.timestamp - b.timestamp);
+    .sort((a, b) => b.timestamp - a.timestamp);
   let filter = 'chat';
   const render = () => {
     stream.replaceChildren();
@@ -87,13 +123,13 @@ function renderActivity(document, root, data, privateChat) {
     });
     if (!visible.length) stream.append(text(document, 'p', 'No activity for this filter.', 'text-body-secondary'));
   };
-  for (const [label, selected] of [['All', 'all'], ['Chat only', 'chat'], ['Actions only', 'action']]) {
+  for (const [label, selected] of [['Chat & Game Log', 'all'], ['Chat', 'chat'], ['Game Log', 'action']]) {
     const button = text(document, 'button', label, `btn btn-sm ${selected === filter ? 'btn-primary' : 'btn-outline-primary'}`);
     button.type = 'button';
     button.addEventListener('click', () => {
       filter = selected;
       [...controls.children].forEach((child) => {
-        child.className = `btn btn-sm ${child.textContent === label ? 'btn-primary' : 'btn-outline-primary'}`;
+        child.className = `btn btn-sm ${child === button ? 'btn-primary' : 'btn-outline-primary'}`;
       });
       render();
     });
@@ -121,6 +157,7 @@ export function renderGameView(root, data) {
   let bottomPlayerIndex = viewing;
   let flipped = false;
   const board = text(document, 'div', '', 'game-board');
+  board.hidden = true;
   const controls = text(document, 'div', '', 'd-flex flex-wrap justify-content-between gap-2 mb-3');
   controls.append(text(document, 'h1', `Game ${data.gameId}`, 'h3 mb-0'));
   const flip = text(document, 'button', 'Flip orientation', 'btn btn-sm btn-outline-secondary');
@@ -128,6 +165,7 @@ export function renderGameView(root, data) {
   flip.addEventListener('click', () => {
     flipped = !flipped;
     board.replaceChildren(playerAt(1), playerAt(0));
+    hud.replaceChildren(hudPlayerAt(1), hudPlayerAt(0));
     bottomPlayerIndex = flipped ? 1 - viewing : viewing;
     setDiceOrientation(bottomPlayerIndex);
   });
@@ -137,6 +175,15 @@ export function renderGameView(root, data) {
   action.target = '_blank';
   action.rel = 'noopener';
   controls.append(action);
+  const toggleView = text(document, 'button', 'Show flat game state', 'btn btn-sm btn-outline-secondary');
+  toggleView.type = 'button';
+  toggleView.addEventListener('click', () => {
+    const show3d = !scene.hidden;
+    scene.hidden = show3d;
+    board.hidden = !show3d;
+    toggleView.textContent = show3d ? 'Show 3D game view' : 'Show flat game state';
+  });
+  controls.append(toggleView);
   root.append(controls, text(document, 'p', `${data.gameState || 'Game'} · Round ${data.roundNumber ?? '—'}`, 'text-body-secondary'));
   function playerAt(slot) {
     const bottomPlayer = flipped ? 1 - viewing : viewing;
@@ -149,21 +196,40 @@ export function renderGameView(root, data) {
       slot,
     );
   }
+  function hudPlayerAt(slot) {
+    const bottomPlayer = flipped ? 1 - viewing : viewing;
+    const index = slot === 0 ? bottomPlayer : 1 - bottomPlayer;
+    return renderHudPlayer(
+      document,
+      players[index],
+      data.activePlayerIdx === index,
+      data.playerWithInitiativeIdx === index,
+      slot,
+    );
+  }
   board.append(playerAt(1), playerAt(0));
-  const scene = text(document, 'div', '', 'game-3d-board');
-  scene.setAttribute('aria-hidden', 'true');
+  const scene = text(document, 'div', '', 'game-play-area');
+  const canvas = text(document, 'div', '', 'game-3d-board');
+  canvas.setAttribute('aria-hidden', 'true');
+  const hud = text(document, 'div', '', 'game-3d-hud');
+  hud.append(hudPlayerAt(1), hudPlayerAt(0));
+  scene.append(canvas, hud);
   root.append(scene, board);
   if (document.defaultView) {
     import('./dice-scene.js').then(({ renderDiceScene }) => {
-      if (!scene.isConnected) return;
-      const instance = renderDiceScene(scene, players, bottomPlayerIndex);
-      if (scene.isConnected) {
+      if (!canvas.isConnected) return;
+      const instance = renderDiceScene(canvas, players, bottomPlayerIndex);
+      if (canvas.isConnected) {
         disposeDiceScene = instance.dispose;
         setDiceOrientation = instance.setBottomPlayerIndex;
       } else {
         instance.dispose();
       }
-    }).catch(() => scene.remove());
+    }).catch(() => {
+      scene.hidden = true;
+      board.hidden = false;
+      toggleView.hidden = true;
+    });
   }
   const privateChat = current === null && players.some((player) => player.isChatPrivate);
   renderActivity(document, root, data, privateChat);
