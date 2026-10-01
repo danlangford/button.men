@@ -116,7 +116,8 @@ test('web-ui: Narrow screen - pages are responsive', () => {
   assert.match(html, /game-die-captured \{ opacity: \.45; filter: grayscale\(1\); \}/);
   assert.match(html, /game-die-captured \.game-die-value \{ text-decoration: line-through; \}/);
   assert.match(html, /game-3d-board \{[\s\S]*?grid-row: 2;/);
-  assert.match(html, /@media \(min-width: 576px\) and \(max-height: 700px\)/);
+  assert.match(html, /@media \(max-height: 700px\)/);
+  assert.match(html, /background: rgb\(13 24 22 \/ 98%\);/);
   assert.match(html, /class="navbar-controls d-flex flex-wrap align-items-center gap-2 ms-auto"/);
   assert.match(html, /class="navbar-player text-body-secondary"/);
   assert.match(html, /main \{ min-width: 0; overflow-wrap: anywhere; \}/);
@@ -466,6 +467,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   renderGameView(root, {
     gameId: 22,
     gameState: 'ACTIVE',
+    maxWins: 3,
     currentPlayerIdx: 1,
     activePlayerIdx: 1,
     playerWithInitiativeIdx: 0,
@@ -475,6 +477,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
         button: { name: 'Avis', recipe: '1234' },
         roundScore: 2,
         sideScore: 3,
+        gameScoreArray: { W: 2, L: 1, D: 0 },
         activeDieArray: [{ value: 4, recipe: 6, skillArray: ['Poison'], statusArray: ['attacker'] }],
         capturedDieArray: [
           { value: 3, recipe: 4, properties: ['WasJustCaptured'] },
@@ -495,6 +498,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
     gameChatLog: [{ timestamp: 1, player: 'dan', message: 'hello' }],
   });
   assert.match(root.textContent, /alice/);
+  assert.match(root.textContent, /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
   assert.match(root.textContent, /Poison/);
   assert.doesNotMatch(root.textContent, /WasJustCaptured/);
   assert.match(root.textContent, /hello/);
@@ -525,7 +529,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.equal(hudDetails.length, 2);
   assert.ok(hudDetails.every((element) => !element.open));
   assert.ok(hudDetails.every((element) => element.children[0].textContent === 'Button and dice details'));
-  assert.match(hud.map((element) => element.textContent).join(' '), /Round 2/);
+  assert.match(hud.map((element) => element.textContent).join(' '), /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
   assert.match(hud.map((element) => element.textContent).join(' '), /Status: attacker/);
   const toggle = allElements(root).find((element) => element.textContent === 'Show flat game state');
   toggle.onclick();

@@ -45,16 +45,23 @@ function renderDie(document, die, captured = false) {
   return card;
 }
 
-function renderHudPlayer(document, player, active, initiative, position) {
+function playerScoreText(player, maxWins) {
+  const scores = player.gameScoreArray;
+  const wlt = Array.isArray(scores)
+    ? scores.join('/')
+    : scores && typeof scores === 'object'
+      ? [scores.W ?? 0, scores.L ?? 0, scores.D ?? 0].join('/')
+      : '–/–/–';
+  const sideScore = Number(player.sideScore) > 0 ? `+${player.sideScore}` : player.sideScore ?? 0;
+  return `Score: ${player.roundScore ?? 0} (${sideScore} sides) · W/L/T: ${wlt} (${maxWins ?? '—'})`;
+}
+
+function renderHudPlayer(document, player, active, initiative, position, maxWins) {
   const button = player.button || {};
   const card = text(document, 'article', '', `game-hud-player game-hud-player-${position}`);
   card.append(text(document, 'strong', player.playerName || `Player ${position + 1}`, 'game-hud-name'));
   card.append(text(document, 'div', `${button.name || 'Unnamed button'}${button.recipe ? ` · ${button.recipe}` : ''}`));
-  card.append(text(
-    document,
-    'div',
-    `Round ${player.roundScore ?? 0} · Match ${list(player.gameScoreArray).join('-') || (player.sideScore ?? 0)}`,
-  ));
+  card.append(text(document, 'div', playerScoreText(player, maxWins)));
   if (active) card.append(text(document, 'span', 'Active player', 'badge text-bg-primary me-1'));
   if (initiative) card.append(text(document, 'span', 'Initiative', 'badge text-bg-warning'));
 
@@ -84,19 +91,14 @@ function renderHudPlayer(document, player, active, initiative, position) {
   return card;
 }
 
-function renderPlayer(document, player, active, initiative, position) {
+function renderPlayer(document, player, active, initiative, position, maxWins) {
   const button = player.button || {};
   const card = text(document, 'article', '', `game-player card p-3 game-player-${position}`);
   const heading = text(document, 'h2', player.playerName || `Player ${position + 1}`, 'h3 mb-1');
   card.append(heading);
   card.append(text(document, 'div', button.name || 'Unnamed button', 'fw-semibold'));
   card.append(text(document, 'div', button.recipe ? `Recipe: ${button.recipe}` : '', 'small text-body-secondary'));
-  card.append(text(
-    document,
-    'div',
-    `Round ${player.roundScore ?? 0} · Match ${list(player.gameScoreArray).join('-') || (player.sideScore ?? 0)}`,
-    'small d-block',
-  ));
+  card.append(text(document, 'div', playerScoreText(player, maxWins), 'small d-block'));
   if (active) card.append(text(document, 'span', 'Active player', 'badge text-bg-primary mt-2 me-1'));
   if (initiative) card.append(text(document, 'span', 'Initiative', 'badge text-bg-warning mt-2'));
   const dice = text(document, 'div', '', 'game-dice d-flex flex-wrap gap-2 mt-3');
@@ -206,6 +208,7 @@ export function renderGameView(root, data) {
       data.activePlayerIdx === index,
       data.playerWithInitiativeIdx === index,
       slot,
+      data.maxWins,
     );
   }
   function hudPlayerAt(slot) {
@@ -217,6 +220,7 @@ export function renderGameView(root, data) {
       data.activePlayerIdx === index,
       data.playerWithInitiativeIdx === index,
       slot,
+      data.maxWins,
     );
   }
   board.append(playerAt(1), playerAt(0));
