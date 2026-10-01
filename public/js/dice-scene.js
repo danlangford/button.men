@@ -1,9 +1,13 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js';
 
+const wasJustCaptured = (die) => Array.isArray(die.properties) &&
+  die.properties.includes('WasJustCaptured');
+
 const dieList = (player) => [
   ...(player.activeDieArray || []),
-  ...(player.capturedDieArray || []),
-  ...(player.outOfPlayDieArray || []),
+  ...(player.capturedDieArray || [])
+    .filter(wasJustCaptured)
+    .map((die) => ({ ...die, justCaptured: true })),
 ];
 
 function sides(die) {
@@ -28,14 +32,22 @@ function dieLabel(die, size) {
   canvas.width = 256;
   canvas.height = 128;
   const context = canvas.getContext('2d');
-  context.fillStyle = 'rgba(255, 255, 255, 0.96)';
+  context.fillStyle = die.justCaptured ? 'rgba(180, 185, 187, 0.96)' : 'rgba(255, 255, 255, 0.96)';
   context.beginPath();
   context.roundRect(8, 8, 240, 112, 20);
   context.fill();
-  context.fillStyle = '#16212a';
+  context.fillStyle = die.justCaptured ? '#50575a' : '#16212a';
   context.textAlign = 'center';
   context.font = 'bold 68px sans-serif';
   context.fillText(String(die.value ?? die.currentValue ?? die.roll ?? '—'), 128, 78);
+  if (die.justCaptured) {
+    context.strokeStyle = '#50575a';
+    context.lineWidth = 5;
+    context.beginPath();
+    context.moveTo(78, 58);
+    context.lineTo(178, 58);
+    context.stroke();
+  }
   context.font = '24px sans-serif';
   context.fillText(`d${size}`, 128, 108);
   const texture = new THREE.CanvasTexture(canvas);
@@ -50,7 +62,11 @@ function makeDie(die, color) {
   const size = sides(die);
   const mesh = new THREE.Mesh(
     geometryFor(size),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.12 }),
+    new THREE.MeshStandardMaterial({
+      color: die.justCaptured ? '#737b7d' : color,
+      roughness: 0.3,
+      metalness: 0.12,
+    }),
   );
   mesh.castShadow = true;
   mesh.receiveShadow = true;

@@ -109,7 +109,9 @@ test('web-ui: Narrow screen - pages are responsive', () => {
 
   const html = read('public/index.html');
   assert.match(html, /@media \(max-width: 575\.98px\)/);
-  assert.match(html, /game-play-area \{ height: calc\(100dvh - 11rem\);/);
+  assert.match(html, /game-play-area \{[\s\S]*?height: calc\(100dvh - 11rem\);/);
+  assert.match(html, /game-play-area \{[\s\S]*?display: grid;/);
+  assert.match(html, /game-3d-board \{[\s\S]*?grid-row: 2;/);
   assert.match(html, /@media \(min-width: 576px\) and \(max-height: 700px\)/);
   assert.match(html, /class="navbar-controls d-flex flex-wrap align-items-center gap-2 ms-auto"/);
   assert.match(html, /class="navbar-player text-body-secondary"/);
@@ -470,6 +472,10 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
         roundScore: 2,
         sideScore: 3,
         activeDieArray: [{ value: 4, recipe: 6, skillArray: ['Poison'], statusArray: ['attacker'] }],
+        capturedDieArray: [
+          { value: 3, recipe: 4, properties: ['WasJustCaptured'] },
+          { value: 1, recipe: 6, properties: [] },
+        ],
         isChatPrivate: false,
       },
       {
@@ -486,21 +492,32 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   });
   assert.match(root.textContent, /alice/);
   assert.match(root.textContent, /Poison/);
+  assert.doesNotMatch(root.textContent, /WasJustCaptured/);
   assert.match(root.textContent, /hello/);
   assert.doesNotMatch(root.textContent, /attacked/);
   assert.doesNotMatch(root.textContent, /small d-block text-body-secondary/);
-  const scene = allElements(root).find((element) => element.className === 'game-3d-board');
-  assert.ok(scene);
-  assert.equal(scene.getAttribute('aria-hidden'), 'true');
+  const canvas = allElements(root).find((element) => element.className === 'game-3d-board');
+  assert.ok(canvas);
+  assert.equal(canvas.getAttribute('aria-hidden'), 'true');
   const status = allElements(root).find((element) => element.tagName === 'small' && element.textContent === 'attacker');
   assert.ok(status);
   const board = allElements(root).find((element) => element.className === 'game-board');
   assert.equal(board.hidden, true);
   assert.match(board.children[0].textContent, /alice/);
   assert.match(board.children[1].textContent, /dan/);
-  const hud = allElements(root).find((element) => element.className === 'game-3d-hud');
-  assert.match(hud.textContent, /Round 2/);
-  assert.match(hud.textContent, /Status: attacker/);
+  const aliceDice = board.children[0].children.find((element) => element.className?.startsWith('game-dice '));
+  assert.equal(aliceDice.children.length, 2);
+  const recentlyCaptured = aliceDice.children.find((element) => element.className.includes('game-die-captured'));
+  assert.match(recentlyCaptured.textContent, /3/);
+  assert.doesNotMatch(aliceDice.textContent, /1/);
+  const playArea = allElements(root).find((element) => element.className === 'game-play-area');
+  assert.equal(playArea.children[0].className, 'game-3d-hud game-3d-hud-top');
+  assert.equal(playArea.children[1], canvas);
+  assert.equal(playArea.children[2].className, 'game-3d-hud game-3d-hud-bottom');
+  const hud = allElements(root).filter((element) => element.className?.startsWith('game-3d-hud '));
+  assert.equal(hud.length, 2);
+  assert.match(hud.map((element) => element.textContent).join(' '), /Round 2/);
+  assert.match(hud.map((element) => element.textContent).join(' '), /Status: attacker/);
   const toggle = allElements(root).find((element) => element.textContent === 'Show flat game state');
   toggle.onclick();
   assert.equal(allElements(root).find((element) => element.className === 'game-play-area').hidden, true);

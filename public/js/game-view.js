@@ -16,19 +16,24 @@ function list(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function wasJustCaptured(die) {
+  return list(die.properties).includes('WasJustCaptured');
+}
+
 function dieLabel(die) {
   const recipe = value(die, 'recipe', 'originalRecipe') ?? '?';
   const sides = value(die, 'sides', 'size');
   const rolled = value(die, 'value', 'currentValue', 'roll');
   const skills = list(value(die, 'skillArray', 'skills')).join(', ');
-  const statuses = list(value(die, 'statusArray', 'statuses', 'properties')).join(', ');
+  const statuses = list(value(die, 'statusArray', 'statuses', 'properties'))
+    .filter((status) => status !== 'WasJustCaptured')
+    .join(', ');
   return { recipe, sides, rolled, skills, statuses };
 }
 
 function renderDie(document, die, captured = false) {
   const info = dieLabel(die);
-  const card = text(document, 'div', '', 'game-die card p-2 text-center');
-  if (captured && card.classList) card.classList.add('game-die-captured');
+  const card = text(document, 'div', '', `game-die card p-2 text-center${captured ? ' game-die-captured' : ''}`);
   if (card.dataset) card.dataset.recipe = info.recipe;
   card.append(
     text(document, 'strong', info.rolled ?? '—', 'game-die-value d-block'),
@@ -92,7 +97,9 @@ function renderPlayer(document, player, active, initiative, position) {
   if (initiative) card.append(text(document, 'span', 'Initiative', 'badge text-bg-warning mt-2'));
   const dice = text(document, 'div', '', 'game-dice d-flex flex-wrap gap-2 mt-3');
   list(player.activeDieArray).forEach((die) => dice.append(renderDie(document, die)));
-  list(player.capturedDieArray).forEach((die) => dice.append(renderDie(document, die, true)));
+  list(player.capturedDieArray)
+    .filter(wasJustCaptured)
+    .forEach((die) => dice.append(renderDie(document, die, true)));
   list(player.outOfPlayDieArray).forEach((die) => dice.append(renderDie(document, die, true)));
   card.append(dice);
   return card;
@@ -165,7 +172,8 @@ export function renderGameView(root, data) {
   flip.addEventListener('click', () => {
     flipped = !flipped;
     board.replaceChildren(playerAt(1), playerAt(0));
-    hud.replaceChildren(hudPlayerAt(1), hudPlayerAt(0));
+    topHud.replaceChildren(hudPlayerAt(1));
+    bottomHud.replaceChildren(hudPlayerAt(0));
     bottomPlayerIndex = flipped ? 1 - viewing : viewing;
     setDiceOrientation(bottomPlayerIndex);
   });
@@ -211,9 +219,11 @@ export function renderGameView(root, data) {
   const scene = text(document, 'div', '', 'game-play-area');
   const canvas = text(document, 'div', '', 'game-3d-board');
   canvas.setAttribute('aria-hidden', 'true');
-  const hud = text(document, 'div', '', 'game-3d-hud');
-  hud.append(hudPlayerAt(1), hudPlayerAt(0));
-  scene.append(canvas, hud);
+  const topHud = text(document, 'div', '', 'game-3d-hud game-3d-hud-top');
+  topHud.append(hudPlayerAt(1));
+  const bottomHud = text(document, 'div', '', 'game-3d-hud game-3d-hud-bottom');
+  bottomHud.append(hudPlayerAt(0));
+  scene.append(topHud, canvas, bottomHud);
   root.append(scene, board);
   if (document.defaultView) {
     import('./dice-scene.js').then(({ renderDiceScene }) => {
