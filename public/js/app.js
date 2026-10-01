@@ -11,16 +11,11 @@ import {
 import { gameList } from './games.js';
 import { renderForumBoard, renderForumOverview, renderForumThread } from './forum.js';
 import { applyParamsToForm, paramsFromForm, renderSearchResults, searchArgsFromParams } from './search.js';
-import { resolveTheme, saveChoice, storedChoice } from './theme.js';
+import { initThemeControl } from './theme.js';
 
 const $ = (id) => document.getElementById(id);
-const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 let signedInPlayer = null;
 let viewRequest = 0;
-
-function applyTheme() {
-  document.documentElement.dataset.bsTheme = resolveTheme(storedChoice(), darkQuery.matches);
-}
 
 function show(view, player = '') {
   $('login-view').hidden = view !== 'login';
@@ -177,13 +172,7 @@ async function start() {
   }
 }
 
-$('theme').value = storedChoice();
-$('theme').addEventListener('change', (event) => {
-  saveChoice(event.target.value);
-  applyTheme();
-});
-darkQuery.addEventListener('change', applyTheme);
-applyTheme();
+initThemeControl($('theme'));
 
 $('login-form').addEventListener('submit', async (event) => {
   event.preventDefault();

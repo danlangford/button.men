@@ -32,7 +32,7 @@ import {
   sortParams,
   winnerLabel,
 } from '../public/js/search.js';
-import { resolveTheme, saveChoice, storedChoice } from '../public/js/theme.js';
+import { initThemeControl, resolveTheme, saveChoice, storedChoice } from '../public/js/theme.js';
 import { read } from './helpers.js';
 
 const games = {
@@ -117,12 +117,56 @@ test('web-ui: Device in dark mode - auto follows the device', () => {
   assert.equal(resolveTheme('auto', false), 'light');
 });
 
+test('web-ui: Every page - shares the attribution footer and gives thanks to ButtonWeavers', () => {
+  for (const page of ['public/index.html', 'public/about.html', 'public/specs/index.html']) {
+    const html = read(page);
+    assert.match(html, /<footer\b/, `${page} has a footer`);
+    assert.match(html, /Button Men/, `${page} identifies Button Men`);
+    assert.match(html, /ButtonWeavers\.com/, `${page} thanks ButtonWeavers`);
+    assert.match(html, /not affiliated with or endorsed by/, `${page} avoids implying endorsement`);
+  }
+});
+
+test('web-ui: Pages available without login - share site navigation and a theme control', () => {
+  for (const page of ['public/about.html', 'public/specs/index.html']) {
+    const html = read(page);
+    assert.match(html, /href="\/#games"/, `${page} links to games`);
+    assert.match(html, /href="\/#!"/, `${page} links to the forum`);
+    assert.match(html, /href="\/#search"/, `${page} links to search`);
+    assert.match(html, /id="theme"/, `${page} has a theme control`);
+  }
+});
+
 test('web-ui: Manual choice - remembered on the device and overrides it', () => {
   const storage = fakeStorage();
   assert.equal(storedChoice(storage), 'auto');
   saveChoice('light', storage);
   assert.equal(storedChoice(storage), 'light');
   assert.equal(resolveTheme(storedChoice(storage), true), 'light');
+});
+
+test('web-ui: Shared theme control - selecting a theme updates the saved choice and the page immediately', () => {
+  const original = globalThis.localStorage;
+  globalThis.localStorage = fakeStorage();
+  try {
+    const root = { dataset: {} };
+    const listeners = {};
+    const select = {
+      value: '',
+      addEventListener(type, handler) { listeners[type] = handler; },
+    };
+    const media = { matches: true, addEventListener() {} };
+    initThemeControl(select, { root, media });
+    assert.equal(select.value, 'auto');
+    assert.equal(root.dataset.bsTheme, 'dark');
+
+    select.value = 'light';
+    listeners.change({ target: select });
+    assert.equal(root.dataset.bsTheme, 'light');
+    assert.equal(storedChoice(), 'light');
+  } finally {
+    globalThis.localStorage = original;
+  }
 });
 
 test('web-ui: Correct password - logging in leads to the player\'s games', async () => {

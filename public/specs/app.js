@@ -3,6 +3,9 @@ import {
   renderSearchResults,
   renderSpecifications,
 } from './viewer.js';
+import { initThemeControl } from '../js/theme.js';
+
+initThemeControl(document.getElementById('theme'));
 
 const search = document.getElementById('spec-search');
 const featureList = document.getElementById('feature-list');
