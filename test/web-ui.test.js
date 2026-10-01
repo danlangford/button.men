@@ -101,6 +101,12 @@ test('web-ui: Narrow screen - pages are responsive', () => {
     assert.match(html, /bootstrap@5\.3\.\d+\/dist\/css\/bootstrap\.min\.css/);
     assert.doesNotMatch(html, /[^-]width:\s*\d{3,}px/);
   }
+
+  const html = read('public/index.html');
+  assert.match(html, /@media \(max-width: 575\.98px\)/);
+  assert.match(html, /class="navbar-controls d-flex flex-wrap align-items-center gap-2 ms-auto"/);
+  assert.match(html, /class="navbar-player text-body-secondary"/);
+  assert.match(html, /main \{ min-width: 0; overflow-wrap: anywhere; \}/);
 });
 
 test('web-ui: Device in dark mode - auto follows the device', () => {
