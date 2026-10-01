@@ -12,4 +12,4 @@
 
 ## 3. Integration validation
 
-- [ ] 3.1 Run OpenSpec strict validation, lint, unit tests, and browser smoke tests and resolve regressions
+- [x] 3.1 Run OpenSpec strict validation, lint, unit tests, and browser smoke tests and resolve regressions
