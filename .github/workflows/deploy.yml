@@ -29,7 +29,7 @@ jobs:
       - if: steps.cred.outputs.ok != 'true'
         run: echo "::notice::Cloudflare secrets not configured yet; see the owner-task issues."
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: steps.cred.outputs.ok == 'true'
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
