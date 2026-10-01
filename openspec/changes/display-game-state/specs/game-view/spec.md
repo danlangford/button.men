@@ -7,7 +7,7 @@ Displaying the current state of a Button Men game in a modern, perspectival play
 ## ADDED Requirements
 
 ### Requirement: Perspectival game layout
-The game view SHALL display the active game state in a perspectival layout with the viewing player's button and dice at the bottom of the play area and the opponent's button and dice across at the top. For a spectator who is not one of the players, the game view SHALL display the two players in a consistent top-and-bottom orientation.
+The game view SHALL display the active game state in a perspectival layout with the viewing player's button and dice at the bottom of the play area and the opponent's button and dice across at the top. For a spectator who is not one of the players, the game view SHALL initially display player 1 at the bottom and player 2 at the top. The game view SHALL provide a control to flip the player orientation on any game.
 
 #### Scenario: Viewing player is a participant
 - **WHEN** a logged-in player views an active game they are playing in
@@ -15,7 +15,11 @@ The game view SHALL display the active game state in a perspectival layout with 
 
 #### Scenario: Viewing player is a spectator
 - **WHEN** a viewer opens a game they are not participating in
-- **THEN** both players' buttons and dice are displayed in opposing top and bottom positions with clear player identification
+- **THEN** player 1's button and dice are displayed at the bottom and player 2's at the top, with clear player identification
+
+#### Scenario: Flipping player orientation
+- **WHEN** a viewer activates the flip-orientation control on any game
+- **THEN** the players' positions at the top and bottom are reversed
 
 ### Requirement: Player and button details
 The game view SHALL display both players' usernames, button names, button recipes, active skills, current round scores, and overall match score, and SHALL indicate which player currently has initiative or is active to move.
@@ -40,15 +44,19 @@ Each die in play SHALL display its current rolled value, its size or recipe, its
 - **THEN** the die visually indicates those skills and status conditions
 
 ### Requirement: Correlated game activity and chat
-The game view SHALL display game action history and chat messages in a unified chronological sequence, and SHALL allow players to view chat messages without being obscured by game actions.
+The game view SHALL display game action history and chat messages in a unified chronological sequence and SHALL provide "All", "Chat only", and "Actions only" filters. The "Chat only" filter SHALL be selected by default.
 
 #### Scenario: Chronological order
-- **WHEN** game actions and chat messages have occurred in a game
+- **WHEN** the viewer selects the "All" filter
 - **THEN** they are presented in timestamp order showing the player and message text
 
-#### Scenario: Chat accessible among extensive game logs
-- **WHEN** many game actions occur between chat messages
-- **THEN** the player can view or filter the stream to find chat messages without scrolling through all game actions
+#### Scenario: Chat filter selected by default
+- **WHEN** the game activity stream first loads
+- **THEN** the "Chat only" filter is selected and only chat messages are shown
+
+#### Scenario: Filtering game activity
+- **WHEN** the viewer selects "Chat only" or "Actions only"
+- **THEN** only messages of the selected type are shown
 
 ### Requirement: Chat privacy
 The game view SHALL respect game chat privacy rules and conceal private chat messages from non-participants.
@@ -58,7 +66,7 @@ The game view SHALL respect game chat privacy rules and conceal private chat mes
 - **THEN** private chat messages are hidden and a privacy notice is shown
 
 ### Requirement: External action link
-Because move submission is not yet supported in button.men, the game view SHALL provide a direct link to the game on buttonweavers for taking actions.
+Because move submission is not yet supported in button.men, the game view SHALL provide a direct link to the game on buttonweavers for taking actions, and that link SHALL open in a new tab.
 
 #### Scenario: Taking a move
 - **WHEN** a player views a game where action is required
