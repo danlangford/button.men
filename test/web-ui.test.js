@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   activeGames,
+  ApiError,
+  callApi,
   currentPlayer,
   forumBoard,
   forumOverview,
@@ -65,6 +67,7 @@ function fakeDocument() {
         scrollIntoView(options) { this.scrollOptions = options; },
         setAttribute(name, value) { this.attributes[name] = String(value); },
         getAttribute(name) { return this.attributes[name] ?? null; },
+        addEventListener(type, handler) { this[`on${type}`] = handler; },
         get textContent() {
           return (this.text || '') + this.children.map((child) => child.textContent).join('');
         },
@@ -140,6 +143,48 @@ test('web-ui: wrong password - reports the buttonweavers message', async () => {
   const call = async () => ({ status: 'failed', message: 'Login failed.' });
   assert.deepEqual(await login('dan', 'nope', call), { ok: false, message: 'Login failed.' });
   assert.equal(await currentPlayer(async () => ({ status: 'failed', data: null })), null);
+});
+
+test('web-ui: Login request fails - a network error is caught and reported, not thrown', async () => {
+  const call = async () => { throw new ApiError('Could not reach buttonweavers. Check your connection and try again.', 'network'); };
+  assert.deepEqual(
+    await login('dan', 'secret', call),
+    { ok: false, message: 'Could not reach buttonweavers. Check your connection and try again.' },
+  );
+});
+
+test('web-ui: Checking who is logged in - a failed request is treated as signed out rather than thrown', async () => {
+  const call = async () => { throw new ApiError('network failure', 'network'); };
+  assert.equal(await currentPlayer(call), null);
+});
+
+test('web-ui: callApi - a fetch rejection becomes a safe network ApiError', async () => {
+  const fetchFn = async () => { throw new TypeError('Failed to fetch'); };
+  await assert.rejects(
+    callApi({ type: 'loadPlayerName' }, { fetchFn }),
+    (error) => error instanceof ApiError && error.kind === 'network',
+  );
+});
+
+test('web-ui: callApi - an unsuccessful HTTP response becomes a safe ApiError', async () => {
+  const fetchFn = async () => ({ ok: false, json: async () => ({ error: 'internal detail' }) });
+  await assert.rejects(
+    callApi({ type: 'loadPlayerName' }, { fetchFn }),
+    (error) => error instanceof ApiError && error.kind === 'http' && !error.message.includes('internal detail'),
+  );
+});
+
+test('web-ui: callApi - a response that is not valid JSON becomes a safe ApiError', async () => {
+  const fetchFn = async () => ({ ok: true, json: async () => { throw new SyntaxError('Unexpected token <'); } });
+  await assert.rejects(
+    callApi({ type: 'loadPlayerName' }, { fetchFn }),
+    (error) => error instanceof ApiError && error.kind === 'invalid-json',
+  );
+});
+
+test('web-ui: callApi - a mock response without an ok flag still succeeds', async () => {
+  const fetchFn = async () => ({ json: async () => ({ status: 'ok' }) });
+  assert.deepEqual(await callApi({ type: 'loadPlayerName' }, { fetchFn }), { status: 'ok' });
 });
 
 test('web-ui: Forum reads - request the overview, board, and selected thread', async () => {
@@ -530,7 +575,10 @@ test('web-ui: More results than fit one page - next/previous are disabled at the
   const [, pager] = nav.children;
   const [prev, next] = pager.children;
   assert.equal(prev.getAttribute('aria-disabled'), 'true');
+  assert.equal(prev.tagName, 'span');
+  assert.equal(prev.href, undefined);
   assert.equal(next.getAttribute('aria-disabled'), null);
+  assert.equal(next.tagName, 'a');
 
   const lastPage = new URLSearchParams({ sortColumn: 'lastMove', sortDirection: 'DESC', page: '2' });
   renderSearchResults(container, { games: [searchGame], summary: { matchesFound: 25 } }, lastPage);
@@ -538,7 +586,27 @@ test('web-ui: More results than fit one page - next/previous are disabled at the
   const [, pager2] = nav2.children;
   const [prev2, next2] = pager2.children;
   assert.equal(prev2.getAttribute('aria-disabled'), null);
+  assert.equal(prev2.tagName, 'a');
   assert.equal(next2.getAttribute('aria-disabled'), 'true');
+  assert.equal(next2.tagName, 'span');
+  assert.equal(next2.href, undefined);
+});
+
+test('web-ui: Viewing search results - the summary states the current page, total pages, and match count', () => {
+  const document = fakeDocument();
+  const container = document.createElement('div');
+
+  const firstPage = new URLSearchParams({ sortColumn: 'lastMove', sortDirection: 'DESC', page: '1' });
+  renderSearchResults(container, { games: [searchGame], summary: { matchesFound: 25 } }, firstPage);
+  const [, nav] = container.children;
+  const [summary] = nav.children;
+  assert.equal(summary.textContent, 'Page 1 of 2 · 25 games found');
+
+  const singlePage = new URLSearchParams({ sortColumn: 'lastMove', sortDirection: 'DESC', page: '1' });
+  renderSearchResults(container, { games: [searchGame], summary: { matchesFound: 1 } }, singlePage);
+  const [, nav2] = container.children;
+  const [summary2] = nav2.children;
+  assert.equal(summary2.textContent, 'Page 1 of 1 · 1 game found');
 });
 
 function fakeSearchIds() {
@@ -647,5 +715,33 @@ test('web-ui: Searching by player name - a signed-in search renders results from
       playerNameA: 'alice',
     });
     assert.notEqual(elements['search-results'].children.length, 0);
+  },
+));
+
+test('web-ui: A page data request fails - the error is shown with a retry that reloads the view', withFakeApp(
+  {
+    hash: '',
+    fetchFn: (() => {
+      let attempts = 0;
+      return (args) => {
+        if (args.type === 'loadPlayerName') return { json: async () => ({ status: 'ok', data: { userName: 'dan' } }) };
+        if (args.type === 'loadActiveGames') {
+          attempts += 1;
+          if (attempts === 1) return { json: async () => ({ status: 'failed', message: 'Could not load games' }) };
+          return { json: async () => ({ status: 'ok', data: games }) };
+        }
+        throw new Error(`Unexpected API call: ${args.type}`);
+      };
+    })(),
+  },
+  async ({ elements }) => {
+    assert.equal(elements['error'].hidden, false);
+    assert.match(elements['error'].textContent, /Could not load games/);
+    const retryButton = elements['error'].children.find((child) => child.tagName === 'button');
+    assert.ok(retryButton, 'a retry button is shown');
+    await retryButton.onclick();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(elements['error'].hidden, true);
+    assert.equal(elements['games'].children.length, 3);
   },
 ));
