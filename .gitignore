@@ -3,3 +3,6 @@ node_modules/
 .env
 .wrangler/
 /public/specs/specifications.json
+/test-results/
+/playwright-report/
+/blob-report/

@@ -1,8 +1,11 @@
 import {
-  featureAnchor,
+  capabilityAnchor,
   renderSearchResults,
   renderSpecifications,
 } from './viewer.js';
+import { initThemeControl } from '../js/theme.js';
+
+initThemeControl(document.getElementById('theme'));
 
 const search = document.getElementById('spec-search');
 const featureList = document.getElementById('feature-list');
@@ -24,7 +27,7 @@ try {
   for (const feature of features) {
     const item = document.createElement('li');
     const link = document.createElement('a');
-    link.href = `#${featureAnchor(feature.name)}`;
+    link.href = `#${capabilityAnchor(feature.name)}`;
     link.textContent = feature.name.replace(/[-_]/g, ' ');
     item.append(link);
     featureList.append(item);

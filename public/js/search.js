@@ -132,6 +132,15 @@ export function buttonweaversGameUrl(gameId) {
   return gameUrl(gameId);
 }
 
+function pagerItem(document, text, href, disabled) {
+  if (disabled) {
+    const span = makeElement(document, 'span', 'btn btn-outline-secondary btn-sm disabled', text);
+    span.setAttribute('aria-disabled', 'true');
+    return span;
+  }
+  return makeLink(document, text, href, 'btn btn-outline-secondary btn-sm');
+}
+
 export function renderSearchResults(container, data, params) {
   const document = container.ownerDocument;
   const games = data.games || [];
@@ -194,18 +203,17 @@ export function renderSearchResults(container, data, params) {
   const wrapper = makeElement(document, 'div', 'table-responsive');
   wrapper.append(table);
 
+  const totalPages = Math.max(1, Math.ceil(matchesFound / PAGE_SIZE));
   const nav = makeElement(document, 'div', 'd-flex justify-content-between align-items-center mt-3');
   const summaryText = makeElement(
     document,
     'span',
     'text-body-secondary small',
-    `Page ${page} · ${matchesFound} game${matchesFound === 1 ? '' : 's'} found`,
+    `Page ${page} of ${totalPages} · ${matchesFound} game${matchesFound === 1 ? '' : 's'} found`,
   );
   const pager = makeElement(document, 'div', 'btn-group');
-  const prev = makeLink(document, 'Previous', `#search?${pageParams(params, page - 1).toString()}`, 'btn btn-outline-secondary btn-sm');
-  if (page <= 1) prev.setAttribute('aria-disabled', 'true');
-  const next = makeLink(document, 'Next', `#search?${pageParams(params, page + 1).toString()}`, 'btn btn-outline-secondary btn-sm');
-  if (page * PAGE_SIZE >= matchesFound) next.setAttribute('aria-disabled', 'true');
+  const prev = pagerItem(document, 'Previous', `#search?${pageParams(params, page - 1).toString()}`, page <= 1);
+  const next = pagerItem(document, 'Next', `#search?${pageParams(params, page + 1).toString()}`, page * PAGE_SIZE >= matchesFound);
   pager.append(prev, next);
   nav.append(summaryText, pager);
 

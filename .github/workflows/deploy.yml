@@ -1,9 +1,16 @@
 name: Deploy
 
-# Every push to main deploys to Cloudflare (see openspec/changes/bootstrap/design.md).
+# Deploys to Cloudflare only after the CI workflow for the same commit on
+# main has passed, so a required check can never be skipped or raced (see
+# openspec/changes/strengthen-platform-and-ui/design.md).
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
+
+permissions:
+  contents: read
 
 concurrency:
   group: deploy
@@ -11,6 +18,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     # Cloudflare secrets live in this environment, which only main can use.
     environment: production
@@ -23,6 +31,8 @@ jobs:
 
       - uses: actions/checkout@v6
         if: steps.cred.outputs.ok == 'true'
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: actions/setup-node@v4
         if: steps.cred.outputs.ok == 'true'
@@ -33,10 +43,21 @@ jobs:
         run: npm ci
 
       - if: steps.cred.outputs.ok == 'true'
-        run: npm test
-
-      - if: steps.cred.outputs.ok == 'true'
         run: npm run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Verify the deployed site responds
+        if: steps.cred.outputs.ok == 'true'
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS --max-time 10 -o /dev/null https://button.men/; then
+              echo "Deployment verified: button.men responded successfully."
+              exit 0
+            fi
+            echo "Attempt $attempt: button.men did not respond successfully; retrying..."
+            sleep 10
+          done
+          echo "::error::Post-deployment verification failed: https://button.men/ did not respond successfully."
+          exit 1

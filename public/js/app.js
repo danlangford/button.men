@@ -11,16 +11,11 @@ import {
 import { gameList } from './games.js';
 import { renderForumBoard, renderForumOverview, renderForumThread } from './forum.js';
 import { applyParamsToForm, paramsFromForm, renderSearchResults, searchArgsFromParams } from './search.js';
-import { resolveTheme, saveChoice, storedChoice } from './theme.js';
+import { initThemeControl } from './theme.js';
 
 const $ = (id) => document.getElementById(id);
-const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 let signedInPlayer = null;
 let viewRequest = 0;
-
-function applyTheme() {
-  document.documentElement.dataset.bsTheme = resolveTheme(storedChoice(), darkQuery.matches);
-}
 
 function show(view, player = '') {
   $('login-view').hidden = view !== 'login';
@@ -34,9 +29,26 @@ function show(view, player = '') {
   $('logout').hidden = view === 'login';
 }
 
-function showError(message) {
-  $('error').textContent = message;
-  $('error').hidden = !message;
+// retry, when given, is offered as a button so a player can repeat a
+// failed, repeatable action without reloading the page.
+function showError(message, retry) {
+  const errorBox = $('error');
+  errorBox.hidden = !message;
+  if (!message) {
+    errorBox.replaceChildren();
+    return;
+  }
+  const text = document.createElement('span');
+  text.textContent = message;
+  errorBox.replaceChildren(text);
+  if (retry) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm btn-outline-danger ms-2';
+    button.textContent = 'Retry';
+    button.addEventListener('click', retry);
+    errorBox.append(button);
+  }
 }
 
 function gameItem(game) {
@@ -72,6 +84,7 @@ function gameItem(game) {
 async function showGames(player) {
   const request = ++viewRequest;
   show('games', player);
+  showError('');
   const list = $('games');
   list.replaceChildren();
   try {
@@ -159,13 +172,7 @@ async function start() {
   }
 }
 
-$('theme').value = storedChoice();
-$('theme').addEventListener('change', (event) => {
-  saveChoice(event.target.value);
-  applyTheme();
-});
-darkQuery.addEventListener('change', applyTheme);
-applyTheme();
+initThemeControl($('theme'));
 
 $('login-form').addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -188,16 +195,22 @@ $('logout').addEventListener('click', async () => {
   show('login');
 });
 
+function loadCurrentView() {
+  return showView(currentView(), signedInPlayer).catch(
+    (error) => showError(error.message, loadCurrentView),
+  );
+}
+
 window.addEventListener('hashchange', () => {
   if (!signedInPlayer) return;
-  showView(currentView(), signedInPlayer).catch((error) => showError(error.message));
+  loadCurrentView();
 });
 
 $('search-form').addEventListener('submit', (event) => {
   event.preventDefault();
   const params = paramsFromForm(event.target);
   window.location.hash = `#search?${params.toString()}`;
-  showSearch(signedInPlayer).catch((error) => showError(error.message));
+  loadCurrentView();
 });
 
-start().catch((error) => showError(error.message));
+start().catch((error) => showError(error.message, loadCurrentView));

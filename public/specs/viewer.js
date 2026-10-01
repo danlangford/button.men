@@ -6,13 +6,13 @@ function slug(value) {
     .replace(/^-|-$/g, '') || 'section';
 }
 
-export function featureAnchor(feature) {
-  return `feature-${slug(feature)}`;
+export function capabilityAnchor(capability) {
+  return `capability-${slug(capability)}`;
 }
 
-export function requirementAnchor(feature, requirement, occurrence = 1) {
+export function requirementAnchor(capability, requirement, occurrence = 1) {
   const suffix = occurrence > 1 ? `-${occurrence}` : '';
-  return `requirement-${slug(feature)}-${slug(requirement)}${suffix}`;
+  return `requirement-${slug(capability)}-${slug(requirement)}${suffix}`;
 }
 
 export function specificationSections(features) {
@@ -31,7 +31,7 @@ export function specificationSections(features) {
         feature: name,
         requirement,
         anchor: requirement === 'Overview'
-          ? featureAnchor(name)
+          ? capabilityAnchor(name)
           : requirementAnchor(name, requirement, occurrence),
         text,
       });
@@ -84,7 +84,7 @@ export function renderSpecifications(container, features) {
     container.append(article);
     const counts = new Map();
     const heading = appendText(article, 'h2', feature.name.replace(/[-_]/g, ' '), 'h3 mb-3');
-    heading.id = featureAnchor(feature.name);
+    heading.id = capabilityAnchor(feature.name);
 
     let list;
     let paragraph = [];
