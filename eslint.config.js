@@ -23,7 +23,7 @@ export default [
     },
   },
   {
-    files: ['scripts/**/*.js', 'test/**/*.js', 'eslint.config.js'],
+    files: ['scripts/**/*.js', 'test/**/*.js', 'eslint.config.js', 'playwright.config.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',

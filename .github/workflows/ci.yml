@@ -29,3 +29,11 @@ jobs:
       - name: Test
         if: hashFiles('package.json') != ''
         run: npm test
+
+      - name: Install Playwright browsers
+        if: hashFiles('package.json') != ''
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser smoke tests
+        if: hashFiles('package.json') != ''
+        run: npm run test:browser
