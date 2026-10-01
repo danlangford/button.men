@@ -28,6 +28,11 @@
         flex-basis: 100%;
         overflow-wrap: anywhere;
       }
+      .game-board { display: grid; gap: 1rem; }
+      .game-player { min-width: 0; }
+      .game-die { min-width: 4rem; overflow-wrap: anywhere; }
+      .game-die-value { font-size: 1.5rem; }
+      .game-event { overflow-wrap: anywhere; }
     }
   </style>
 </head>
@@ -77,6 +82,10 @@
       <p id="no-games" class="text-body-secondary" hidden>No active games.</p>
       <div id="games" class="list-group"></div>
       <p class="small text-body-secondary mt-3">Games open on buttonweavers.com.</p>
+    </section>
+
+    <section id="game-view" hidden>
+      <div id="game-content"></div>
     </section>
 
     <section id="forum-view" hidden>

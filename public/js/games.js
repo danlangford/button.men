@@ -4,12 +4,16 @@ export function gameUrl(gameId) {
   return `${BUTTONWEAVERS}/ui/game.html?game=${encodeURIComponent(gameId)}`;
 }
 
+export function gameViewUrl(gameId) {
+  return `#game?gameId=${encodeURIComponent(gameId)}`;
+}
+
 // Turn buttonweavers' parallel arrays into one object per game,
 // with the games waiting on the player first.
 export function gameList(data) {
   const games = data.gameIdArray.map((id, i) => ({
     id,
-    href: gameUrl(id),
+    href: gameViewUrl(id),
     opponent: data.opponentNameArray[i],
     myButton: data.myButtonNameArray[i],
     opponentButton: data.opponentButtonNameArray[i],

@@ -5,6 +5,7 @@ import {
   ApiError,
   callApi,
   currentPlayer,
+  gameData,
   forumBoard,
   forumOverview,
   forumThread,
@@ -12,7 +13,8 @@ import {
   logout,
   searchGameHistory,
 } from '../public/js/api.js';
-import { gameList, gameUrl } from '../public/js/games.js';
+import { gameList, gameUrl, gameViewUrl } from '../public/js/games.js';
+import { renderGameView } from '../public/js/game-view.js';
 import {
   buttonweaversThreadUrl,
   forumThreadUrl,
@@ -435,9 +437,62 @@ test('web-ui: Games awaiting a move - listed first, otherwise in buttonweavers o
   assert.equal(gameList(games)[0].yourTurn, true);
 });
 
-test('web-ui: Tapping a game - opens it on buttonweavers', () => {
+test('web-ui: Tapping a game - opens the button.men game view', () => {
   assert.equal(gameUrl(22), 'https://www.buttonweavers.com/ui/game.html?game=22');
-  assert.deepEqual(gameList(games).map((g) => g.href), [gameUrl(22), gameUrl(11), gameUrl(33)]);
+  assert.deepEqual(gameList(games).map((g) => g.href), [gameViewUrl(22), gameViewUrl(11), gameViewUrl(33)]);
+});
+
+test('web-ui: Game data - loads a game by numeric id', async () => {
+  let request;
+  const data = { gameId: 22 };
+  assert.deepEqual(await gameData('22', async (args) => {
+    request = args;
+    return { status: 'ok', data };
+  }), data);
+  assert.deepEqual(request, { type: 'loadGameData', game: 22 });
+});
+
+test('web-ui: Game view - renders players, dice, orientation, and filtered activity', () => {
+  const document = fakeDocument();
+  const root = document.createElement('main');
+  renderGameView(root, {
+    gameId: 22,
+    gameState: 'ACTIVE',
+    currentPlayerIdx: 1,
+    activePlayerIdx: 1,
+    playerWithInitiativeIdx: 0,
+    playerDataArray: [
+      {
+        playerName: 'alice',
+        button: { name: 'Avis', recipe: '1234' },
+        roundScore: 2,
+        sideScore: 3,
+        activeDieArray: [{ value: 4, recipe: 6, skillArray: ['Poison'], statusArray: ['attacker'] }],
+        isChatPrivate: false,
+      },
+      {
+        playerName: 'dan',
+        button: { name: 'Bauer', recipe: '6789' },
+        roundScore: 1,
+        sideScore: 4,
+        activeDieArray: [{ value: 2, recipe: 8 }],
+        isChatPrivate: false,
+      },
+    ],
+    gameActionLog: [{ timestamp: 2, player: 'alice', message: 'attacked' }],
+    gameChatLog: [{ timestamp: 1, player: 'dan', message: 'hello' }],
+  });
+  assert.match(root.textContent, /alice/);
+  assert.match(root.textContent, /Poison/);
+  assert.match(root.textContent, /hello/);
+  assert.doesNotMatch(root.textContent, /attacked/);
+  const flip = allElements(root).find((element) => element.textContent === 'Flip orientation');
+  assert.ok(flip);
+  flip.onclick();
+  const all = allElements(root).find((element) => element.textContent === 'All');
+  assert.ok(all);
+  all.onclick();
+  assert.match(root.textContent, /attacked/);
 });
 
 test('web-ui: Reach game search - one search link and nav wiring reach the search view', () => {
