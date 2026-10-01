@@ -16,15 +16,28 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
   <style>
     .forum-post-body { white-space: pre-wrap; }
+    .navbar-controls { min-width: 0; }
+    @media (max-width: 575.98px) {
+      main { min-width: 0; overflow-wrap: anywhere; }
+      .navbar-controls {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+        margin-left: 0 !important;
+      }
+      .navbar-player {
+        flex-basis: 100%;
+        overflow-wrap: anywhere;
+      }
+    }
   </style>
 </head>
 <body>
   <nav class="navbar border-bottom">
     <div class="container d-flex flex-wrap gap-2">
       <a class="navbar-brand fw-bold" href="#games">button.men</a>
-      <div class="d-flex align-items-center gap-2 ms-auto">
+      <div class="navbar-controls d-flex flex-wrap align-items-center gap-2 ms-auto">
         <a class="btn btn-sm btn-outline-primary" href="/specs/">Specifications</a>
-        <span id="player" class="text-body-secondary"></span>
+        <span id="player" class="navbar-player text-body-secondary"></span>
         <a id="forum-link" href="#!" class="btn btn-sm btn-outline-primary" hidden>Forum</a>
         <a id="search-link" href="#search" class="btn btn-sm btn-outline-primary" hidden>Search</a>
         <a id="games-link" href="#games" class="btn btn-sm btn-outline-primary" hidden>Games</a>
