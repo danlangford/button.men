@@ -35,8 +35,17 @@ test('hosting: served at button.men', () => {
   assert.equal(config.assets.run_worker_first, true);
 });
 
-test('hosting: Deploying - pushes to main deploy automatically', () => {
+test('hosting: Deploying - deploys automatically once CI succeeds on main', () => {
   const workflow = read('.github/workflows/deploy.yml');
-  assert.match(workflow, /push:\s*\n\s*branches: \[main\]/);
+  assert.match(workflow, /workflow_run:\s*\n\s*workflows: \[CI\]/);
+  assert.match(workflow, /branches: \[main\]/);
+  assert.match(workflow, /if: github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(workflow, /npm run deploy/);
+});
+
+test('hosting: Deployment verification - checks the public site and reports failure', () => {
+  const workflow = read('.github/workflows/deploy.yml');
+  assert.match(workflow, /Verify the deployed site responds/);
+  assert.match(workflow, /curl .*https:\/\/button\.men\//);
+  assert.match(workflow, /::error::/);
 });
