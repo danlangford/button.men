@@ -5,7 +5,7 @@
 - [ ] 1.1 Add a minimal Playwright smoke-test foundation for anonymous specification browsing; verify that the test runs locally against fixture content.
 - [ ] 1.2 Align the public specification page with the site's shared navigation and theme controls while keeping it accessible without login; verify anonymous navigation and saved theme behavior in browser tests.
 - [ ] 1.3 Add the shared attribution footer to every site page, including the specification page; obtain maintainer approval for the factual wording and verify it appears without unverified ownership or affiliation claims.
-- [ ] 1.4 Rename specification-browser organization and search labels to capabilities, retain existing fragment links as aliases, and test capability search and direct-link behavior.
+- [ ] 1.4 Rename specification-browser organization and search labels to capabilities, use capability-based fragment identifiers, and test capability search and direct-link behavior.
 
 ## 2. Search and API error behavior
 

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  featureAnchor,
+  capabilityAnchor,
   renderSearchResults,
   renderSpecifications,
   requirementAnchor,
@@ -69,16 +69,18 @@ test('specs viewer: search - finds case-insensitive requirement and overview con
   assert.deepEqual(searchSpecifications(features, '  '), []);
 });
 
-test('specs viewer: direct links - feature and requirements have stable matching anchors', () => {
+test('specs viewer: direct links - capabilities and requirements have matching anchors', () => {
   const sections = specificationSections(features);
-  assert.equal(sections[0].anchor, featureAnchor('account-access'));
+  assert.equal(sections[0].anchor, capabilityAnchor('account-access'));
+  assert.equal(sections[0].anchor, 'capability-account-access');
   assert.equal(sections[1].anchor, requirementAnchor('account-access', 'Secure access'));
 
   const document = fakeDocument();
   const container = document.createElement('main');
   renderSpecifications(container, features);
   const elements = allElements(container);
-  assert.equal(elements.filter((element) => element.id === featureAnchor('account-access')).length, 1);
+  assert.equal(elements.filter((element) => element.id === capabilityAnchor('account-access')).length, 1);
+  assert.equal(elements.some((element) => element.id === 'feature-account-access'), false);
   const requirement = elements.find((element) => element.id === sections[1].anchor);
   assert.ok(requirement);
   assert.ok(elements.some((element) => element.href === `#${requirement.id}`));

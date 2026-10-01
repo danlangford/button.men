@@ -10,7 +10,7 @@ ButtonWeavers remains authoritative for API behavior. Its `ApiResponder::get_int
 
 **Goals:**
 - Define a low-dependency path from the current app to a more reliable, consistent, and testable UI.
-- Keep public specifications accessible and preserve existing shared specification URLs while changing their displayed organization to capabilities.
+- Keep public specifications accessible and align their fragment identifiers with the capability terminology.
 - Make user-facing failures understandable without exposing credentials or request/response payloads.
 
 **Non-Goals:**
@@ -24,7 +24,7 @@ ButtonWeavers remains authoritative for API behavior. Its `ApiResponder::get_int
 
 Bring the specification page into visual and navigation alignment with the main site using the existing Bootstrap-based design and `public/js/theme.js` behavior. Keep the specification page public and static; navigation to account-protected areas may continue to lead to login. Use common shell elements rather than adding a separate design system or router.
 
-The specification builder and viewer should refer to their entries as capabilities, matching OpenSpec's existing directory and document model. Preserve current fragment identifiers as aliases when introducing capability terminology, so links already shared with users continue to work.
+The specification viewer should refer to its entries as capabilities, matching OpenSpec's existing directory and document model. Use capability-based fragment identifiers; no prior specification links have been published that require compatibility aliases.
 
 ### Use upstream search summary for clear pagination
 
@@ -61,7 +61,7 @@ Use a shared footer that thanks ButtonWeavers and describes Button Men as the ga
 ## Risks / Trade-offs
 
 - [Browser tests add runtime and maintenance cost] → Keep the suite small, use stable local fixtures, and reserve it for critical journeys.
-- [Changed terminology could break shared spec links] → Preserve existing fragment identifiers as aliases.
+- [Changed terminology could break shared spec links] → Use capability-based identifiers; no existing shared links need compatibility aliases.
 - [An attribution statement may imply legal rights or affiliation] → Use factual, cautious wording and require maintainer review before release.
 - [A post-deploy smoke check detects but does not itself reverse a failed deployment] → Report failure promptly and retain the existing Cloudflare deployment recovery process.
 - [Branch-protection settings are not fully represented by source files] → Document the required status checks and have a repository maintainer configure them.
