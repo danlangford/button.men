@@ -34,7 +34,7 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.cred.outputs.ok == 'true'
         with:
           node-version: 22
