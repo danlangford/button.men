@@ -35,6 +35,7 @@ function renderDie(document, die, captured = false) {
   const info = dieLabel(die);
   const card = text(document, 'div', '', `game-die card p-2 text-center${captured ? ' game-die-captured' : ''}`);
   if (card.dataset) card.dataset.recipe = info.recipe;
+  if (captured) card.setAttribute('aria-disabled', 'true');
   card.append(
     text(document, 'strong', info.rolled ?? '—', 'game-die-value d-block'),
     text(document, 'span', `d${info.sides || info.recipe}`, 'small'),
@@ -54,11 +55,13 @@ function renderHudPlayer(document, player, active, initiative, position) {
     'div',
     `Round ${player.roundScore ?? 0} · Match ${list(player.gameScoreArray).join('-') || (player.sideScore ?? 0)}`,
   ));
-  const buttonSkills = list(value(button, 'skillArray', 'skills')).join(', ');
-  if (buttonSkills) card.append(text(document, 'div', `Button skills: ${buttonSkills}`));
   if (active) card.append(text(document, 'span', 'Active player', 'badge text-bg-primary me-1'));
   if (initiative) card.append(text(document, 'span', 'Initiative', 'badge text-bg-warning'));
 
+  const details = text(document, 'details', '', 'game-hud-details');
+  details.append(text(document, 'summary', 'Button and dice details'));
+  const buttonSkills = list(value(button, 'skillArray', 'skills')).join(', ');
+  if (buttonSkills) details.append(text(document, 'div', `Button skills: ${buttonSkills}`));
   for (const [label, dice] of [
     ['Active dice', player.activeDieArray],
     ['Captured dice', player.capturedDieArray],
@@ -75,8 +78,9 @@ function renderHudPlayer(document, player, active, initiative, position) {
         info.statuses && `Status: ${info.statuses}`,
       ].filter(Boolean).join(' · ');
     }).join('  |  ')));
-    card.append(group);
+    details.append(group);
   }
+  card.append(details);
   return card;
 }
 

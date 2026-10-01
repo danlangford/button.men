@@ -20,7 +20,8 @@
     .game-play-area {
       position: relative;
       display: grid;
-      grid-template-rows: minmax(5rem, 1fr) minmax(10rem, 2fr) minmax(5rem, 1fr);
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(3.5rem, .55fr) minmax(10rem, 3fr) minmax(3.5rem, .55fr);
       gap: .35rem;
       padding: .5rem;
       height: min(62vh, 38rem);
@@ -61,8 +62,10 @@
       overflow-wrap: anywhere;
     }
     .game-hud-name { display: block; font-size: 1rem; }
+    .game-hud-details { margin-top: .25rem; }
+    .game-hud-details summary { cursor: pointer; }
     .game-hud-dice { margin-top: .25rem; }
-    .game-die-captured { opacity: .55; filter: grayscale(1); }
+    .game-die-captured { opacity: .45; filter: grayscale(1); }
     .game-die-captured .game-die-value { text-decoration: line-through; }
     @media (max-width: 575.98px) {
       main { min-width: 0; overflow-wrap: anywhere; }
@@ -81,7 +84,7 @@
       .game-die-value { font-size: 1.5rem; }
       .game-event { overflow-wrap: anywhere; }
       .game-play-area {
-        grid-template-rows: minmax(4rem, .75fr) minmax(6rem, 1.5fr) minmax(4rem, .75fr);
+        grid-template-rows: minmax(3.25rem, .5fr) minmax(8rem, 3fr) minmax(3.25rem, .5fr);
         height: calc(100dvh - 11rem);
         min-height: 14rem;
       }
