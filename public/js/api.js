@@ -70,6 +70,12 @@ export async function activeGames(call = callApi) {
   return result.data;
 }
 
+export async function gameData(gameId, call = callApi) {
+  const result = await call({ type: 'loadGameData', game: Number(gameId) });
+  if (result.status !== 'ok') throw new Error(result.message || 'Could not load game');
+  return result.data;
+}
+
 async function forumRequest(args, call) {
   const result = await call(args);
   if (result.status !== 'ok') throw new Error(result.message || 'Could not load forum');

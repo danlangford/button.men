@@ -42,8 +42,8 @@ Logged-in players SHALL see their active games, with the games waiting on them f
 - **THEN** those games are listed first
 
 ### Requirement: Opening a game
-For now, opening a game SHALL send the player to that game on buttonweavers.
+Opening a game from the active games list SHALL display that game's current state on button.men.
 
 #### Scenario: Tapping a game
 - **WHEN** a player clicks or taps a game in the list
-- **THEN** that game opens on buttonweavers
+- **THEN** that game opens in the button.men game view

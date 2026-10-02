@@ -1,6 +1,7 @@
 import {
   activeGames,
   currentPlayer,
+  gameData,
   forumBoard,
   forumOverview,
   forumThread,
@@ -9,6 +10,7 @@ import {
   searchGameHistory,
 } from './api.js';
 import { gameList } from './games.js';
+import { renderGameView } from './game-view.js';
 import { renderForumBoard, renderForumOverview, renderForumThread } from './forum.js';
 import { applyParamsToForm, paramsFromForm, renderSearchResults, searchArgsFromParams } from './search.js';
 import { initThemeControl } from './theme.js';
@@ -20,6 +22,8 @@ let viewRequest = 0;
 function show(view, player = '') {
   $('login-view').hidden = view !== 'login';
   $('games-view').hidden = view !== 'games';
+  const gameView = $('game-view');
+  if (gameView) gameView.hidden = view !== 'game';
   $('forum-view').hidden = view !== 'forum';
   $('search-view').hidden = view !== 'search';
   $('player').textContent = player;
@@ -118,9 +122,23 @@ async function showForum(player) {
       if (request !== viewRequest) return;
       renderForumOverview(content, data);
     }
+
   } catch (error) {
     if (request === viewRequest) throw error;
   }
+
+}
+
+async function showGame(player) {
+  const request = ++viewRequest;
+  show('game', player);
+  showError('');
+  const params = new URLSearchParams(hashQuery());
+  const gameId = params.get('gameId');
+  if (!gameId || !/^\d+$/.test(gameId)) throw new Error('A game id is required');
+  const data = await gameData(gameId);
+  if (request !== viewRequest) return;
+  renderGameView($('game-content'), data, player);
 }
 
 function hashQuery() {
@@ -152,12 +170,14 @@ async function showSearch(player) {
 function currentView() {
   if (window.location.hash.startsWith('#!')) return 'forum';
   if (window.location.hash.startsWith('#search')) return 'search';
+  if (window.location.hash === '#game' || window.location.hash.startsWith('#game?')) return 'game';
   return 'games';
 }
 
 function showView(view, player) {
   if (view === 'forum') return showForum(player);
   if (view === 'search') return showSearch(player);
+  if (view === 'game') return showGame(player);
   return showGames(player);
 }
 

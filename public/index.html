@@ -17,6 +17,73 @@
   <style>
     .forum-post-body { white-space: pre-wrap; }
     .navbar-controls { min-width: 0; }
+    .game-play-area {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      padding: .5rem;
+      height: min(74vh, 42rem);
+      min-height: 27rem;
+      margin-bottom: 1rem;
+      overflow: hidden;
+      border-radius: 1rem;
+      background: #182b29;
+    }
+    .game-3d-board {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 15rem;
+      border: 1px solid #70472d;
+      border-radius: inherit;
+      overflow: hidden;
+    }
+    .game-3d-board canvas { display: block; width: 100%; height: 100%; }
+    .game-3d-hud {
+      display: block;
+      z-index: 1;
+      color: #fff;
+    }
+    .game-hud-player {
+      box-sizing: border-box;
+      display: grid;
+      gap: .35rem;
+      padding: .5rem .75rem;
+      border: 1px solid rgb(255 255 255 / 35%);
+      border-radius: .75rem;
+      background: rgb(13 24 22 / 98%);
+      font-size: .9rem;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .game-hud-header,
+    .game-hud-title,
+    .game-hud-badges,
+    .game-hud-section,
+    .game-hud-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .35rem .5rem;
+      align-items: center;
+    }
+    .game-hud-header { justify-content: space-between; }
+    .game-hud-title-copy { min-width: 0; }
+    .game-hud-name { display: block; font-size: 1rem; }
+    .game-hud-button { color: rgb(255 255 255 / 78%); }
+    .game-hud-score { font-weight: 600; }
+    .game-hud-section { align-items: flex-start; }
+    .game-hud-label { font-weight: 600; }
+    .game-hud-pills { flex: 1 1 auto; min-width: 0; }
+    .game-hud-pill {
+      padding: .15rem .45rem;
+      border: 1px solid rgb(255 255 255 / 18%);
+      border-radius: 999px;
+      background: rgb(255 255 255 / 8%);
+      font-size: .82rem;
+      line-height: 1.2;
+    }
+    .game-die-captured { opacity: .45; filter: grayscale(1); }
+    .game-die-captured .game-die-value { text-decoration: line-through; }
     @media (max-width: 575.98px) {
       main { min-width: 0; overflow-wrap: anywhere; }
       .navbar-controls {
@@ -28,6 +95,49 @@
         flex-basis: 100%;
         overflow-wrap: anywhere;
       }
+      .game-board { display: grid; gap: 1rem; }
+      .game-player { min-width: 0; }
+      .game-die { min-width: 4rem; overflow-wrap: anywhere; }
+      .game-die-value { font-size: 1.5rem; }
+      .game-event { overflow-wrap: anywhere; }
+      .game-play-area {
+        height: calc(100dvh - 8rem);
+        min-height: 24rem;
+      }
+      .game-hud-player { padding: .4rem .55rem; font-size: .8rem; }
+      .game-hud-name { font-size: .9rem; }
+      .game-hud-pill { font-size: .76rem; }
+    }
+    @media (max-height: 700px) {
+      .game-play-area {
+        height: calc(100dvh - 7rem);
+        min-height: 18rem;
+      }
+      .game-hud-player { gap: .25rem; padding: .35rem .5rem; font-size: .74rem; line-height: 1.2; }
+      .game-hud-name { font-size: .85rem; }
+      .game-hud-pill { font-size: .72rem; }
+    }
+    @media (max-height: 700px) and (orientation: landscape) {
+      .game-play-area {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(15rem, .95fr);
+        grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: stretch;
+      }
+      .game-3d-board {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        min-height: 0;
+      }
+      .game-3d-hud-top {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      .game-3d-hud-bottom {
+        grid-column: 2;
+        grid-row: 2;
+      }
+      .game-hud-player { height: 100%; align-content: start; }
     }
   </style>
 </head>
@@ -77,6 +187,10 @@
       <p id="no-games" class="text-body-secondary" hidden>No active games.</p>
       <div id="games" class="list-group"></div>
       <p class="small text-body-secondary mt-3">Games open on buttonweavers.com.</p>
+    </section>
+
+    <section id="game-view" hidden>
+      <div id="game-content"></div>
     </section>
 
     <section id="forum-view" hidden>

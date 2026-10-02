@@ -5,6 +5,7 @@ import {
   ApiError,
   callApi,
   currentPlayer,
+  gameData,
   forumBoard,
   forumOverview,
   forumThread,
@@ -12,7 +13,8 @@ import {
   logout,
   searchGameHistory,
 } from '../public/js/api.js';
-import { gameList, gameUrl } from '../public/js/games.js';
+import { gameList, gameUrl, gameViewUrl } from '../public/js/games.js';
+import { renderGameView } from '../public/js/game-view.js';
 import {
   buttonweaversThreadUrl,
   forumThreadUrl,
@@ -107,6 +109,15 @@ test('web-ui: Narrow screen - pages are responsive', () => {
 
   const html = read('public/index.html');
   assert.match(html, /@media \(max-width: 575\.98px\)/);
+  assert.match(html, /game-play-area \{[\s\S]*?height: calc\(100dvh - 8rem\);/);
+  assert.match(html, /game-play-area \{[\s\S]*?display: flex;/);
+  assert.match(html, /flex-direction: column;/);
+  assert.match(html, /game-die-captured \{ opacity: \.45; filter: grayscale\(1\); \}/);
+  assert.match(html, /game-die-captured \.game-die-value \{ text-decoration: line-through; \}/);
+  assert.match(html, /game-3d-board \{[\s\S]*?flex: 1 1 auto;/);
+  assert.match(html, /@media \(max-height: 700px\)/);
+  assert.match(html, /background: rgb\(13 24 22 \/ 98%\);/);
+  assert.match(html, /game-hud-pill \{/);
   assert.match(html, /class="navbar-controls d-flex flex-wrap align-items-center gap-2 ms-auto"/);
   assert.match(html, /class="navbar-player text-body-secondary"/);
   assert.match(html, /main \{ min-width: 0; overflow-wrap: anywhere; \}/);
@@ -435,9 +446,113 @@ test('web-ui: Games awaiting a move - listed first, otherwise in buttonweavers o
   assert.equal(gameList(games)[0].yourTurn, true);
 });
 
-test('web-ui: Tapping a game - opens it on buttonweavers', () => {
+test('web-ui: Tapping a game - opens the button.men game view', () => {
   assert.equal(gameUrl(22), 'https://www.buttonweavers.com/ui/game.html?game=22');
-  assert.deepEqual(gameList(games).map((g) => g.href), [gameUrl(22), gameUrl(11), gameUrl(33)]);
+  assert.deepEqual(gameList(games).map((g) => g.href), [gameViewUrl(22), gameViewUrl(11), gameViewUrl(33)]);
+});
+
+test('web-ui: Game data - loads a game by numeric id', async () => {
+  let request;
+  const data = { gameId: 22 };
+  assert.deepEqual(await gameData('22', async (args) => {
+    request = args;
+    return { status: 'ok', data };
+  }), data);
+  assert.deepEqual(request, { type: 'loadGameData', game: 22 });
+});
+
+test('web-ui: Game view - renders players, dice, orientation, and filtered activity', () => {
+  const document = fakeDocument();
+  const root = document.createElement('main');
+  renderGameView(root, {
+    gameId: 22,
+    gameState: 'ACTIVE',
+    maxWins: 3,
+    currentPlayerIdx: 1,
+    activePlayerIdx: 1,
+    playerWithInitiativeIdx: 0,
+    playerDataArray: [
+      {
+        playerName: 'alice',
+        button: { name: 'Avis', recipe: '1234' },
+        roundScore: 2,
+        sideScore: 3,
+        gameScoreArray: { W: 2, L: 1, D: 0 },
+        activeDieArray: [{ value: 4, recipe: 6, skillArray: ['Poison'], statusArray: ['attacker'] }],
+        capturedDieArray: [
+          { value: 3, recipe: 4, properties: ['WasJustCaptured'] },
+          { value: 1, recipe: 6, properties: [] },
+        ],
+        isChatPrivate: false,
+      },
+      {
+        playerName: 'dan',
+        button: { name: 'Bauer', recipe: '6789' },
+        roundScore: 1,
+        sideScore: 4,
+        activeDieArray: [{ value: 2, recipe: 8 }],
+        isChatPrivate: false,
+      },
+    ],
+    gameActionLog: [{ timestamp: 2, player: 'alice', message: 'attacked' }],
+    gameChatLog: [{ timestamp: 1, player: 'dan', message: 'hello' }],
+  });
+  assert.match(root.textContent, /alice/);
+  assert.match(root.textContent, /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
+  assert.match(root.textContent, /Poison/);
+  assert.doesNotMatch(root.textContent, /WasJustCaptured/);
+  assert.match(root.textContent, /hello/);
+  assert.doesNotMatch(root.textContent, /attacked/);
+  assert.doesNotMatch(root.textContent, /small d-block text-body-secondary/);
+  const canvas = allElements(root).find((element) => element.className === 'game-3d-board');
+  assert.ok(canvas);
+  assert.equal(canvas.getAttribute('aria-hidden'), 'true');
+  const status = allElements(root).find((element) => element.tagName === 'small' && element.textContent === 'attacker');
+  assert.ok(status);
+  const board = allElements(root).find((element) => element.className === 'game-board');
+  assert.equal(board.hidden, true);
+  assert.match(board.children[0].textContent, /alice/);
+  assert.match(board.children[1].textContent, /dan/);
+  const aliceDice = board.children[0].children.find((element) => element.className?.startsWith('game-dice '));
+  assert.equal(aliceDice.children.length, 2);
+  const recentlyCaptured = aliceDice.children.find((element) => element.className.includes('game-die-captured'));
+  assert.match(recentlyCaptured.textContent, /3/);
+  assert.equal(recentlyCaptured.getAttribute('aria-disabled'), 'true');
+  assert.doesNotMatch(aliceDice.textContent, /1/);
+  const playArea = allElements(root).find((element) => element.className === 'game-play-area');
+  assert.equal(playArea.children[0].className, 'game-3d-hud game-3d-hud-top');
+  assert.equal(playArea.children[1], canvas);
+  assert.equal(playArea.children[2].className, 'game-3d-hud game-3d-hud-bottom');
+  const hud = allElements(root).filter((element) => element.className?.startsWith('game-3d-hud '));
+  assert.equal(hud.length, 2);
+  const hudPills = allElements(root).filter((element) => element.className === 'game-hud-pill');
+  assert.ok(hudPills.length >= 3);
+  assert.ok(hudPills.some((element) => element.textContent === '4·d6 · Skills: Poison · Status: attacker'));
+  assert.ok(hudPills.some((element) => element.textContent === '3·d4'));
+  assert.match(hud.map((element) => element.textContent).join(' '), /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
+  assert.match(hud.map((element) => element.textContent).join(' '), /Status: attacker/);
+  const toggle = allElements(root).find((element) => element.textContent === 'Show flat game state');
+  toggle.onclick();
+  assert.equal(allElements(root).find((element) => element.className === 'game-play-area').hidden, true);
+  assert.equal(board.hidden, false);
+  assert.equal(toggle.textContent, 'Show 3D game view');
+  toggle.onclick();
+  assert.equal(allElements(root).find((element) => element.className === 'game-play-area').hidden, false);
+  assert.equal(board.hidden, true);
+  const flip = allElements(root).find((element) => element.textContent === 'Flip orientation');
+  assert.ok(flip);
+  flip.onclick();
+  assert.match(board.children[0].textContent, /dan/);
+  assert.match(board.children[1].textContent, /alice/);
+  const all = allElements(root).find((element) => element.textContent === 'Chat & Game Log');
+  assert.ok(all);
+  all.onclick();
+  assert.match(root.textContent, /attacked/);
+  const events = allElements(root).filter((element) => element.className?.startsWith('game-event '));
+  assert.match(events[0].textContent, /attacked/);
+  assert.match(events[1].textContent, /hello/);
+  assert.ok(allElements(root).some((element) => element.textContent === 'Chat'));
+  assert.ok(allElements(root).some((element) => element.textContent === 'Game Log'));
 });
 
 test('web-ui: Reach game search - one search link and nav wiring reach the search view', () => {
