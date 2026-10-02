@@ -56,38 +56,46 @@ function playerScoreText(player, maxWins) {
   return `Score: ${player.roundScore ?? 0} (${sideScore} sides) · W/L/T: ${wlt} (${maxWins ?? '—'})`;
 }
 
+function hudDieText(die) {
+  const info = dieLabel(die);
+  return [
+    `${info.rolled ?? '—'}·d${info.sides || info.recipe}`,
+    info.skills && `Skills: ${info.skills}`,
+    info.statuses && `Status: ${info.statuses}`,
+  ].filter(Boolean).join(' · ');
+}
+
+function appendHudSection(document, card, label, items) {
+  if (!items.length) return;
+  const row = text(document, 'div', '', 'game-hud-section');
+  row.append(text(document, 'span', `${label}:`, 'game-hud-label'));
+  const pills = text(document, 'div', '', 'game-hud-pills');
+  items.forEach((item) => pills.append(text(document, 'span', item, 'game-hud-pill')));
+  row.append(pills);
+  card.append(row);
+}
+
 function renderHudPlayer(document, player, active, initiative, position, maxWins) {
   const button = player.button || {};
   const card = text(document, 'article', '', `game-hud-player game-hud-player-${position}`);
-  card.append(text(document, 'strong', player.playerName || `Player ${position + 1}`, 'game-hud-name'));
-  card.append(text(document, 'div', `${button.name || 'Unnamed button'}${button.recipe ? ` · ${button.recipe}` : ''}`));
-  card.append(text(document, 'div', playerScoreText(player, maxWins)));
-  if (active) card.append(text(document, 'span', 'Active player', 'badge text-bg-primary me-1'));
-  if (initiative) card.append(text(document, 'span', 'Initiative', 'badge text-bg-warning'));
+  const header = text(document, 'div', '', 'game-hud-header');
+  const title = text(document, 'div', '', 'game-hud-title');
+  const titleCopy = text(document, 'div', '', 'game-hud-title-copy');
+  titleCopy.append(
+    text(document, 'strong', player.playerName || `Player ${position + 1}`, 'game-hud-name'),
+    text(document, 'div', `${button.name || 'Unnamed button'}${button.recipe ? ` · ${button.recipe}` : ''}`, 'game-hud-button'),
+  );
+  title.append(titleCopy);
+  const badges = text(document, 'div', '', 'game-hud-badges');
+  if (active) badges.append(text(document, 'span', 'Active player', 'badge text-bg-primary'));
+  if (initiative) badges.append(text(document, 'span', 'Initiative', 'badge text-bg-warning'));
+  header.append(title, badges);
+  card.append(header, text(document, 'div', playerScoreText(player, maxWins), 'game-hud-score'));
 
-  const details = text(document, 'details', '', 'game-hud-details');
-  details.append(text(document, 'summary', 'Button and dice details'));
-  const buttonSkills = list(value(button, 'skillArray', 'skills')).join(', ');
-  if (buttonSkills) details.append(text(document, 'div', `Button skills: ${buttonSkills}`));
-  for (const [label, dice] of [
-    ['Active dice', player.activeDieArray],
-    ['Captured dice', player.capturedDieArray],
-    ['Out of play dice', player.outOfPlayDieArray],
-  ]) {
-    if (!list(dice).length) continue;
-    const group = text(document, 'div', '', 'game-hud-dice');
-    group.append(text(document, 'strong', `${label}: `));
-    group.append(text(document, 'span', list(dice).map((die) => {
-      const info = dieLabel(die);
-      return [
-        `${info.rolled ?? '—'} · d${info.sides || info.recipe}`,
-        info.skills && `Skills: ${info.skills}`,
-        info.statuses && `Status: ${info.statuses}`,
-      ].filter(Boolean).join(' · ');
-    }).join('  |  ')));
-    details.append(group);
-  }
-  card.append(details);
+  appendHudSection(document, card, 'Button skills', list(value(button, 'skillArray', 'skills')));
+  appendHudSection(document, card, 'Active dice', list(player.activeDieArray).map(hudDieText));
+  appendHudSection(document, card, 'Captured dice', list(player.capturedDieArray).map(hudDieText));
+  appendHudSection(document, card, 'Out of play dice', list(player.outOfPlayDieArray).map(hudDieText));
   return card;
 }
 

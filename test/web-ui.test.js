@@ -109,15 +109,15 @@ test('web-ui: Narrow screen - pages are responsive', () => {
 
   const html = read('public/index.html');
   assert.match(html, /@media \(max-width: 575\.98px\)/);
-  assert.match(html, /game-play-area \{[\s\S]*?height: calc\(100dvh - 11rem\);/);
-  assert.match(html, /game-play-area \{[\s\S]*?display: grid;/);
-  assert.match(html, /grid-template-columns: minmax\(0, 1fr\);/);
-  assert.match(html, /grid-template-rows: minmax\(3\.25rem, \.5fr\) minmax\(8rem, 3fr\) minmax\(3\.25rem, \.5fr\);/);
+  assert.match(html, /game-play-area \{[\s\S]*?height: calc\(100dvh - 8rem\);/);
+  assert.match(html, /game-play-area \{[\s\S]*?display: flex;/);
+  assert.match(html, /flex-direction: column;/);
   assert.match(html, /game-die-captured \{ opacity: \.45; filter: grayscale\(1\); \}/);
   assert.match(html, /game-die-captured \.game-die-value \{ text-decoration: line-through; \}/);
-  assert.match(html, /game-3d-board \{[\s\S]*?grid-row: 2;/);
+  assert.match(html, /game-3d-board \{[\s\S]*?flex: 1 1 auto;/);
   assert.match(html, /@media \(max-height: 700px\)/);
   assert.match(html, /background: rgb\(13 24 22 \/ 98%\);/);
+  assert.match(html, /game-hud-pill \{/);
   assert.match(html, /class="navbar-controls d-flex flex-wrap align-items-center gap-2 ms-auto"/);
   assert.match(html, /class="navbar-player text-body-secondary"/);
   assert.match(html, /main \{ min-width: 0; overflow-wrap: anywhere; \}/);
@@ -525,10 +525,10 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.equal(playArea.children[2].className, 'game-3d-hud game-3d-hud-bottom');
   const hud = allElements(root).filter((element) => element.className?.startsWith('game-3d-hud '));
   assert.equal(hud.length, 2);
-  const hudDetails = allElements(root).filter((element) => element.tagName === 'details');
-  assert.equal(hudDetails.length, 2);
-  assert.ok(hudDetails.every((element) => !element.open));
-  assert.ok(hudDetails.every((element) => element.children[0].textContent === 'Button and dice details'));
+  const hudPills = allElements(root).filter((element) => element.className === 'game-hud-pill');
+  assert.ok(hudPills.length >= 3);
+  assert.ok(hudPills.some((element) => element.textContent === '4·d6 · Skills: Poison · Status: attacker'));
+  assert.ok(hudPills.some((element) => element.textContent === '3·d4'));
   assert.match(hud.map((element) => element.textContent).join(' '), /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
   assert.match(hud.map((element) => element.textContent).join(' '), /Status: attacker/);
   const toggle = allElements(root).find((element) => element.textContent === 'Show flat game state');

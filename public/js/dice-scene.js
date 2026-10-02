@@ -75,6 +75,22 @@ function makeDie(die, color) {
   return mesh;
 }
 
+function layoutDice(group, dice) {
+  const columns = dice.length <= 5 ? Math.max(dice.length, 1) : Math.ceil(dice.length / 2);
+  const rows = Math.ceil(dice.length / columns);
+  const xSpacing = dice.length <= 4 ? 1.75 : dice.length <= 8 ? 1.45 : 1.2;
+  const zSpacing = 1.7;
+
+  group.children.forEach((mesh, index) => {
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    const itemsInRow = Math.min(columns, dice.length - (row * columns));
+    mesh.position.x = (column - ((itemsInRow - 1) / 2)) * xSpacing;
+    mesh.position.y = 0.72;
+    mesh.position.z = (row - ((rows - 1) / 2)) * zSpacing;
+  });
+}
+
 export function renderDiceScene(container, players, bottomPlayerIndex) {
   const width = container.clientWidth;
   const height = container.clientHeight;
@@ -83,8 +99,7 @@ export function renderDiceScene(container, players, bottomPlayerIndex) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#182b29');
   const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
-  camera.position.set(0, 11, 15);
-  camera.lookAt(0, 0, 0);
+  const viewDirection = new THREE.Vector3(0, 11, 15).normalize();
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(width, height);
@@ -120,19 +135,43 @@ export function renderDiceScene(container, players, bottomPlayerIndex) {
     const colors = playerIndex === 0 ? ['#53c8bd', '#298d89'] : ['#f2b562', '#bd713d'];
     dice.forEach((die, index) => {
       const mesh = makeDie(die, colors[index % colors.length]);
-      mesh.position.x = (index - (dice.length - 1) / 2) * 1.45;
-      mesh.position.y = 0.72;
       group.add(mesh);
     });
+    layoutDice(group, dice);
     scene.add(group);
     return group;
   });
 
+  const bounds = new THREE.Box3();
+  const center = new THREE.Vector3();
+  const sizeVector = new THREE.Vector3();
+  const fitCamera = () => {
+    bounds.makeEmpty();
+    diceGroups.forEach((group) => bounds.expandByObject(group));
+    if (bounds.isEmpty()) {
+      center.set(0, 0.72, 0);
+      sizeVector.set(6, 2, 6);
+    } else {
+      bounds.getCenter(center);
+      bounds.getSize(sizeVector);
+    }
+    const radius = Math.max(sizeVector.x, sizeVector.y * 1.3, sizeVector.z) * 0.62;
+    const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+    const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+    const distance = Math.max(
+      radius / Math.sin(verticalFov / 2),
+      radius / Math.sin(horizontalFov / 2),
+    ) * 1.18;
+    camera.position.copy(center).addScaledVector(viewDirection, distance);
+    camera.lookAt(center.x, Math.max(center.y - 0.35, 0), center.z);
+    renderer.render(scene, camera);
+  };
+
   const positionPlayers = (bottom) => {
     diceGroups.forEach((group, index) => {
-      group.position.z = index === bottom ? 2.1 : -2.1;
+      group.position.z = index === bottom ? 2.85 : -2.85;
     });
-    renderer.render(scene, camera);
+    fitCamera();
   };
   positionPlayers(bottomPlayerIndex);
 
@@ -144,7 +183,7 @@ export function renderDiceScene(container, players, bottomPlayerIndex) {
     camera.aspect = nextWidth / nextHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(nextWidth, nextHeight);
-    renderer.render(scene, camera);
+    fitCamera();
   };
   const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize);
   observer?.observe(container);
