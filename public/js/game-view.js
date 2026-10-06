@@ -1,4 +1,5 @@
 import { gameUrl } from './games.js';
+import { buildReplaySteps } from './game-replay.js';
 import { profileUrl } from './links.js';
 
 let disposeDiceScene = () => {};
@@ -168,7 +169,7 @@ function renderActivity(document, root, data, privateChat) {
   root.append(stream);
 }
 
-export function renderGameView(root, data) {
+export function renderGameView(root, data, replayOptions = {}) {
   disposeDiceScene();
   disposeDiceScene = () => {};
   setDiceOrientation = () => {};
@@ -179,6 +180,17 @@ export function renderGameView(root, data) {
     return;
   }
   const document = root.ownerDocument;
+  const replaySteps = buildReplaySteps(data.gameActionLog, players);
+  const currentStepIndex = replaySteps.length - 1;
+  const stepParam = replayOptions.step;
+  const requestedStep = stepParam !== null && stepParam !== undefined && /^\d+$/.test(String(stepParam))
+    ? Number(stepParam)
+    : Number.NaN;
+  const invalidStep = stepParam !== null && stepParam !== undefined &&
+    (!Number.isSafeInteger(requestedStep) || requestedStep < 0 || requestedStep > currentStepIndex);
+  let stepIndex = invalidStep || Number.isNaN(requestedStep) ? currentStepIndex : requestedStep;
+  let viewPlayers = replaySteps[stepIndex].players;
+  let sceneVersion = 0;
   const current = Number.isInteger(data.currentPlayerIdx) && data.currentPlayerIdx >= 0 ? data.currentPlayerIdx : null;
   const viewing = current === null ? 0 : current;
   let bottomPlayerIndex = viewing;
@@ -212,13 +224,38 @@ export function renderGameView(root, data) {
     toggleView.textContent = show3d ? 'Show 3D game view' : 'Show flat game state';
   });
   controls.append(toggleView);
-  root.append(controls, text(document, 'p', `${data.gameState || 'Game'} · Round ${data.roundNumber ?? '—'}`, 'text-body-secondary'));
+  const replayControls = text(document, 'div', '', 'd-flex flex-wrap align-items-center gap-2 mb-2');
+  const previous = text(document, 'button', 'Previous step', 'btn btn-sm btn-outline-primary');
+  previous.type = 'button';
+  const next = text(document, 'button', 'Next step', 'btn btn-sm btn-outline-primary');
+  next.type = 'button';
+  const returnToCurrent = text(document, 'button', 'Return to current game', 'btn btn-sm btn-outline-secondary');
+  returnToCurrent.type = 'button';
+  const stepLink = text(document, 'a', 'Link to this step', 'btn btn-sm btn-link');
+  replayControls.append(previous, next, returnToCurrent, stepLink);
+  const replayStatus = text(document, 'p', '', 'small text-body-secondary mb-1');
+  const replayNotice = text(
+    document,
+    'p',
+    'Replay is approximate and uses only attacks found in the available game log.',
+    'small text-body-secondary',
+  );
+  if (invalidStep) {
+    replayStatus.textContent = 'Replay step not found; showing the current game state.';
+  }
+  root.append(
+    controls,
+    text(document, 'p', `${data.gameState || 'Game'} · Round ${data.roundNumber ?? '—'}`, 'text-body-secondary'),
+    replayControls,
+    replayStatus,
+    replayNotice,
+  );
   function playerAt(slot) {
     const bottomPlayer = flipped ? 1 - viewing : viewing;
     const index = slot === 0 ? bottomPlayer : 1 - bottomPlayer;
     return renderPlayer(
       document,
-      players[index],
+      viewPlayers[index],
       data.activePlayerIdx === index,
       data.playerWithInitiativeIdx === index,
       slot,
@@ -230,39 +267,79 @@ export function renderGameView(root, data) {
     const index = slot === 0 ? bottomPlayer : 1 - bottomPlayer;
     return renderHudPlayer(
       document,
-      players[index],
+      viewPlayers[index],
       data.activePlayerIdx === index,
       data.playerWithInitiativeIdx === index,
       slot,
       data.maxWins,
     );
   }
-  board.append(playerAt(1), playerAt(0));
   const scene = text(document, 'div', '', 'game-play-area');
   const canvas = text(document, 'div', '', 'game-3d-board');
   canvas.setAttribute('aria-hidden', 'true');
   const topHud = text(document, 'div', '', 'game-3d-hud game-3d-hud-top');
-  topHud.append(hudPlayerAt(1));
   const bottomHud = text(document, 'div', '', 'game-3d-hud game-3d-hud-bottom');
-  bottomHud.append(hudPlayerAt(0));
   scene.append(topHud, canvas, bottomHud);
   root.append(scene, board);
-  if (document.defaultView) {
+  const renderBoard = () => {
+    board.replaceChildren(playerAt(1), playerAt(0));
+    topHud.replaceChildren(hudPlayerAt(1));
+    bottomHud.replaceChildren(hudPlayerAt(0));
+  };
+  const renderScene = () => {
+    const generation = ++sceneVersion;
+    disposeDiceScene();
+    disposeDiceScene = () => {};
+    if (!document.defaultView) return;
     import('./dice-scene.js').then(({ renderDiceScene }) => {
-      if (!canvas.isConnected) return;
-      const instance = renderDiceScene(canvas, players, bottomPlayerIndex);
-      if (canvas.isConnected) {
+      if (!canvas.isConnected || generation !== sceneVersion) return;
+      const instance = renderDiceScene(canvas, viewPlayers, bottomPlayerIndex);
+      if (canvas.isConnected && generation === sceneVersion) {
         disposeDiceScene = instance.dispose;
         setDiceOrientation = instance.setBottomPlayerIndex;
       } else {
         instance.dispose();
       }
     }).catch(() => {
+      if (generation !== sceneVersion) return;
       scene.hidden = true;
       board.hidden = false;
       toggleView.hidden = true;
     });
-  }
+  };
+  const updateStep = (nextStepIndex, updateHash = true) => {
+    stepIndex = nextStepIndex;
+    const step = replaySteps[stepIndex];
+    viewPlayers = step.players;
+    renderBoard();
+    renderScene();
+    const isHistory = step.type !== 'current';
+    action.hidden = isHistory;
+    previous.disabled = stepIndex === 0;
+    next.disabled = stepIndex === currentStepIndex;
+    returnToCurrent.hidden = !isHistory;
+    if (isHistory) {
+      replayStatus.textContent = `History · ${step.type === 'attack' ? `${step.attackType} attack` : 'Attack result'} · step ${stepIndex + 1} of ${currentStepIndex}`;
+    } else if (!invalidStep) {
+      replayStatus.textContent = 'Current game state.';
+    }
+    stepLink.href = `#game?gameId=${encodeURIComponent(data.gameId)}&step=${stepIndex}`;
+    if (updateHash && document.defaultView?.history?.replaceState) {
+      document.defaultView.history.replaceState(
+        null,
+        '',
+        `#game?gameId=${encodeURIComponent(data.gameId)}&step=${stepIndex}`,
+      );
+    }
+  };
+  previous.addEventListener('click', () => {
+    if (stepIndex > 0) updateStep(stepIndex - 1);
+  });
+  next.addEventListener('click', () => {
+    if (stepIndex < currentStepIndex) updateStep(stepIndex + 1);
+  });
+  returnToCurrent.addEventListener('click', () => updateStep(currentStepIndex));
+  updateStep(stepIndex, false);
   const privateChat = current === null && players.some((player) => player.isChatPrivate);
   renderActivity(document, root, data, privateChat);
 }

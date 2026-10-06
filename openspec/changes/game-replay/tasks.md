@@ -7,7 +7,7 @@
 
 ## 2. Replay game view
 
-- [ ] 2.1 Add replay controls, separate attack/result steps, past-state read-only indication, and current-state return; verify boundaries and controls with UI tests.
+- [x] 2.1 Add replay controls, separate attack/result steps, past-state read-only indication, and current-state return; verify boundaries and controls with UI tests.
 - [ ] 2.2 Mark attackers and targets in both flat and 3D views and show the best-effort limitation; verify markers are textually distinct and current rendering remains intact.
 - [ ] 2.3 Add hash-step deep links, invalid-step fallback notice, and current-state default; verify valid, invalid, and missing step routing.
 

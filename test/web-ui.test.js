@@ -569,6 +569,50 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.ok(allElements(root).some((element) => element.textContent === 'Game Log'));
 });
 
+test('web-ui: Game replay - steps backward and forward and hides external actions in history', () => {
+  const document = fakeDocument();
+  const root = document.createElement('main');
+  renderGameView(root, {
+    gameId: 22,
+    gameState: 'ACTIVE',
+    currentPlayerIdx: 0,
+    activePlayerIdx: 0,
+    playerDataArray: [
+      { playerName: 'alice', activeDieArray: [{ recipe: 'z(8)', sides: 8, value: 3, skillArray: ['Speed'] }] },
+      { playerName: 'bob', activeDieArray: [{ recipe: 6, value: 4 }] },
+    ],
+    gameActionLog: [{
+      timestamp: 1,
+      player: 'alice',
+      message: 'alice performed Skill attack using [z(8):2] against [(6):4]; Defender (6) was captured; Attacker z(8) rerolled 2 => 3',
+    }],
+  });
+  const elements = () => allElements(root);
+  const previous = elements().find((element) => element.textContent === 'Previous step');
+  const next = elements().find((element) => element.textContent === 'Next step');
+  const current = elements().find((element) => element.textContent === 'Return to current game');
+  const action = elements().find((element) => element.textContent === 'Take action on buttonweavers.com');
+  const status = elements().find((element) => element.className === 'small text-body-secondary mb-1');
+
+  assert.equal(previous.disabled, false);
+  assert.equal(next.disabled, true);
+  assert.equal(action.hidden, false);
+  previous.onclick();
+  assert.equal(action.hidden, true);
+  assert.match(status.textContent, /Attack result/);
+  next.onclick();
+  assert.match(status.textContent, /Current game state/);
+  assert.equal(action.hidden, false);
+  previous.onclick();
+  previous.onclick();
+  assert.equal(previous.disabled, true);
+  assert.match(status.textContent, /Skill attack/);
+  assert.equal(action.hidden, true);
+  current.onclick();
+  assert.equal(next.disabled, true);
+  assert.equal(action.hidden, false);
+});
+
 test('web-ui: Reach game search - one search link and nav wiring reach the search view', () => {
   const html = read('public/index.html');
   assert.match(html, /<a id="search-link" href="#search"[^>]*hidden>Search<\/a>/);

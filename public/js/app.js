@@ -154,7 +154,7 @@ async function showGame(player) {
   if (!gameId || !/^\d+$/.test(gameId)) throw new Error('A game id is required');
   const data = await gameData(gameId);
   if (request !== viewRequest) return;
-  renderGameView($('game-content'), data, player);
+  renderGameView($('game-content'), data, { step: params.get('step') });
 }
 
 function hashQuery() {
