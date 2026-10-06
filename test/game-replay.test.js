@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  buildCapturedHistory,
   buildReplaySteps,
   parseAttackMessage,
   parseDieNotation,
@@ -166,4 +167,37 @@ test('game replay begins after the previous round boundary', () => {
 
   assert.deepEqual(steps.map((step) => step.type), ['attack', 'result', 'current']);
   assert.equal(steps[0].timestamp, 3);
+});
+
+test('capture history retains captured dice and logged values across rounds', () => {
+  const players = [
+    { playerName: 'alice' },
+    { playerName: 'bob' },
+  ];
+  const log = [
+    {
+      timestamp: 1,
+      player: 'alice',
+      message: 'alice performed Skill attack using [(8):2] against [(6):4]; Defender (6) rerolled 4 => 3; Defender (6) was captured',
+    },
+    { timestamp: 2, player: 'alice', message: 'End of round: alice won round 1 (1 vs. 0)' },
+    {
+      timestamp: 3,
+      player: 'bob',
+      message: 'bob performed Power attack using [(10):5] against [(8):2]; Defender (8) was captured',
+    },
+  ];
+
+  const allCaptures = buildCapturedHistory(log, players);
+  assert.deepEqual(allCaptures.map((captures) => captures.map((die) => [
+    die.recipe,
+    die.value,
+    die.originalPlayerIndex,
+    die.capturedByIndex,
+  ])), [
+    [['(6)', 3, 1, 0]],
+    [['(8)', 2, 0, 1]],
+  ]);
+  assert.equal(buildCapturedHistory(log, players, 0)[0].length, 1);
+  assert.equal(buildCapturedHistory(log, players, 0)[1].length, 0);
 });

@@ -166,7 +166,7 @@ function markDice(player, parsedDice, role) {
 function loggedAttackResults(message) {
   const rerolls = [];
   const captures = [];
-  for (const match of message.matchAll(/\b(Attacker|Defender)\s+(.+?)\s+rerolled\s+(\d+)\s*=>\s*(\d+)/gi)) {
+  for (const match of message.matchAll(/\b(Attacker|Defender)\s+([^;]+?)\s+rerolled\s+(\d+)\s*=>\s*(\d+)/gi)) {
     rerolls.push({
       role: match[1].toLowerCase(),
       recipe: match[2],
@@ -174,7 +174,7 @@ function loggedAttackResults(message) {
       to: Number(match[4]),
     });
   }
-  for (const match of message.matchAll(/\bDefender\s+(.+?)\s+was captured\b/gi)) {
+  for (const match of message.matchAll(/\bDefender\s+([^;]+?)\s+was captured\b/gi)) {
     captures.push(match[1]);
   }
   return { rerolls, captures };
@@ -364,4 +364,56 @@ export function buildReplaySteps(actionLog, currentPlayers, roundNumber) {
     ...reversedSteps.reverse(),
     { type: 'current', players: currentPlayers },
   ];
+}
+
+export function buildCapturedHistory(actionLog, players, throughLogIndex = Infinity) {
+  const playerList = list(players);
+  const history = playerList.map(() => []);
+  const entries = list(actionLog)
+    .map((entry, originalIndex) => ({ ...entry, originalIndex }))
+    .sort((first, second) => (Number(first.timestamp) || 0) - (Number(second.timestamp) || 0) ||
+      first.originalIndex - second.originalIndex);
+  const limitEntry = Number.isFinite(throughLogIndex)
+    ? entries.find((entry) => entry.originalIndex === throughLogIndex)
+    : null;
+  const limitTimestamp = Number(limitEntry?.timestamp) || 0;
+
+  for (const entry of entries) {
+    if (Number.isFinite(throughLogIndex) && (
+      !limitEntry ||
+      (Number(entry.timestamp) || 0) > limitTimestamp ||
+      ((Number(entry.timestamp) || 0) === limitTimestamp && entry.originalIndex > limitEntry.originalIndex)
+    )) continue;
+    const attack = parseAttackMessage(entry.message);
+    if (!attack) continue;
+    const playerIndex = playerList.findIndex((player) => player.playerName === entry.player);
+    const targetIndex = playerList.findIndex((_, index) => index !== playerIndex);
+    if (playerIndex < 0 || targetIndex < 0) continue;
+
+    const results = loggedAttackResults(entry.message);
+    const captured = capturedTargets(attack, results.captures);
+    const used = new Set();
+    for (const parsed of attack.targets) {
+      if (!captured.has(parsed)) continue;
+      const reroll = results.rerolls.find((result) =>
+        result.role === 'defender' &&
+        !used.has(result) &&
+        recipeKey(result.recipe) === recipeKey(parsed.recipe) &&
+        result.from === parsed.value);
+      if (reroll) used.add(reroll);
+      history[playerIndex].push({
+        recipe: parsed.recipe,
+        sides: parsed.sides,
+        value: reroll?.to ?? parsed.value,
+        skillArray: parsed.skillArray,
+        properties: ['WasJustCaptured'],
+        originalPlayerIndex: targetIndex,
+        capturedByIndex: playerIndex,
+        timestamp: entry.timestamp,
+        logIndex: entry.originalIndex,
+      });
+    }
+  }
+
+  return history;
 }

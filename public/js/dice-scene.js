@@ -1,14 +1,20 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js';
 
-const wasJustCaptured = (die) => Array.isArray(die.properties) &&
-  die.properties.includes('WasJustCaptured');
-
-const dieList = (player) => [
+const dieList = (player, playerIndex) => [
   ...(player.activeDieArray || []),
-  ...(player.capturedDieArray || [])
-    .filter(wasJustCaptured)
-    .map((die) => ({ ...die, justCaptured: true })),
+  ...(player.replayCapturedDieArray || player.capturedDieArray || [])
+    .map((die) => ({ ...die, justCaptured: true, capturedByIndex: playerIndex })),
 ];
+
+function capturedColor(die, players, options) {
+  if (die.capturedByIndex === options.viewPlayerIndex && Number.isInteger(options.viewPlayerIndex)) {
+    return options.neutralOpponentColor || '#dddddd';
+  }
+  if (Number.isInteger(options.viewPlayerIndex)) return options.neutralPlayerColor || '#cccccc';
+  const originalColor = players[die.originalPlayerIndex]?.playerColor;
+  if (!originalColor) return '#9aa5a1';
+  return new THREE.Color(originalColor).lerp(new THREE.Color('#65736e'), 0.5);
+}
 
 function sides(die) {
   const size = Number(die.sides ?? die.size ?? die.recipe);
@@ -71,7 +77,7 @@ function makeDie(die, color) {
   const mesh = new THREE.Mesh(
     geometryFor(size),
     new THREE.MeshStandardMaterial({
-      color: die.justCaptured ? '#737b7d' : roleColors[die.replayRole] || color,
+      color: die.justCaptured ? color : roleColors[die.replayRole] || color,
       roughness: 0.3,
       metalness: 0.12,
     }),
@@ -80,29 +86,63 @@ function makeDie(die, color) {
   mesh.receiveShadow = true;
   mesh.rotation.set(0.25, 0.4, 0.2);
   mesh.userData.replayRole = die.replayRole;
+  mesh.userData.isCaptured = Boolean(die.justCaptured);
+  mesh.userData.dieInfo = die;
   if (die.replayRole === 'attacker') mesh.scale.setScalar(1.22);
   if (die.replayRole === 'target') mesh.scale.setScalar(1.14);
   mesh.add(dieLabel(die, size));
   return mesh;
 }
 
-function layoutDice(group, dice) {
-  const columns = dice.length <= 5 ? Math.max(dice.length, 1) : Math.ceil(dice.length / 2);
-  const rows = Math.ceil(dice.length / columns);
-  const xSpacing = dice.length <= 4 ? 1.75 : dice.length <= 8 ? 1.45 : 1.2;
+function layoutDice(group, dice, bottomPlayer) {
+  const activeDice = group.children.filter((mesh) => !mesh.userData.isCaptured);
+  const capturedDice = group.children.filter((mesh) => mesh.userData.isCaptured);
+  const columns = activeDice.length <= 5 ? Math.max(activeDice.length, 1) : Math.ceil(activeDice.length / 2);
+  const rows = Math.ceil(activeDice.length / columns);
+  const xSpacing = activeDice.length <= 4 ? 1.75 : activeDice.length <= 8 ? 1.45 : 1.2;
   const zSpacing = 1.7;
 
-  group.children.forEach((mesh, index) => {
+  activeDice.forEach((mesh, index) => {
     const row = Math.floor(index / columns);
     const column = index % columns;
-    const itemsInRow = Math.min(columns, dice.length - (row * columns));
+    const itemsInRow = Math.min(columns, activeDice.length - (row * columns));
     mesh.position.x = (column - ((itemsInRow - 1) / 2)) * xSpacing;
     mesh.position.y = 0.72;
     mesh.position.z = (row - ((rows - 1) / 2)) * zSpacing;
   });
+  capturedDice.forEach((mesh, index) => {
+    mesh.position.set((index - ((capturedDice.length - 1) / 2)) * 1.15, 0.72, bottomPlayer ? 1.45 : -1.45);
+  });
 }
 
-export function renderDiceScene(container, players, bottomPlayerIndex) {
+function attackLabel(attackType) {
+  if (!attackType) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 128;
+  const context = canvas.getContext('2d');
+  context.fillStyle = 'rgba(15, 24, 22, 0.94)';
+  context.beginPath();
+  context.roundRect(5, 5, 502, 118, 26);
+  context.fill();
+  context.strokeStyle = '#ffe07a';
+  context.lineWidth = 8;
+  context.stroke();
+  context.fillStyle = '#fff3bf';
+  context.font = 'bold 54px sans-serif';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText(`${attackType} attack`, 256, 65);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(canvas),
+    depthTest: false,
+  }));
+  sprite.scale.set(2.7, 0.68, 1);
+  sprite.renderOrder = 3;
+  return sprite;
+}
+
+export function renderDiceScene(container, players, bottomPlayerIndex, options = {}) {
   const width = container.clientWidth;
   const height = container.clientHeight;
   if (!width || !height) throw new Error('The game board has no size');
@@ -116,6 +156,7 @@ export function renderDiceScene(container, players, bottomPlayerIndex) {
   renderer.setSize(width, height);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.domElement.setAttribute('aria-hidden', 'true');
   container.append(renderer.domElement);
 
   scene.add(new THREE.HemisphereLight('#ffffff', '#62746e', 2.1));
@@ -142,42 +183,39 @@ export function renderDiceScene(container, players, bottomPlayerIndex) {
 
   const diceGroups = players.map((player, playerIndex) => {
     const group = new THREE.Group();
-    const dice = dieList(player);
-    const colors = playerIndex === 0 ? ['#53c8bd', '#298d89'] : ['#f2b562', '#bd713d'];
-    dice.forEach((die, index) => {
-      const mesh = makeDie(die, colors[index % colors.length]);
+    const dice = dieList(player, playerIndex);
+    const color = player.playerColor || (playerIndex === 0 ? '#53c8bd' : '#f2b562');
+    dice.forEach((die) => {
+      const mesh = makeDie(die, die.justCaptured ? capturedColor(die, players, options) : color);
       group.add(mesh);
     });
-    layoutDice(group, dice);
+    layoutDice(group, dice, playerIndex === bottomPlayerIndex);
     scene.add(group);
     return group;
   });
   const replayArrows = [];
+  const arrowMaterial = new THREE.MeshBasicMaterial({ color: '#ffe07a', depthTest: false });
   const attackers = diceGroups.flatMap((group) =>
     group.children.filter((mesh) => mesh.userData.replayRole === 'attacker'));
   const targets = diceGroups.flatMap((group) =>
     group.children.filter((mesh) => mesh.userData.replayRole === 'target'));
   for (const attacker of attackers) {
     for (const target of targets) {
-      const arrow = new THREE.ArrowHelper(
-        new THREE.Vector3(0, 0, 1),
-        new THREE.Vector3(),
-        1,
-        '#ffe07a',
-        0.42,
-        0.24,
-      );
-      arrow.line.material.depthTest = false;
-      arrow.cone.material.depthTest = false;
-      arrow.renderOrder = 2;
-      scene.add(arrow);
-      replayArrows.push({ arrow, attacker, target });
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1, 12), arrowMaterial);
+      const head = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.62, 14), arrowMaterial);
+      shaft.renderOrder = 2;
+      head.renderOrder = 2;
+      scene.add(shaft, head);
+      replayArrows.push({ shaft, head, attacker, target });
     }
   }
+  const label = attackLabel(options.attackType);
+  if (label) scene.add(label);
 
   const bounds = new THREE.Box3();
   const center = new THREE.Vector3();
   const sizeVector = new THREE.Vector3();
+  let zoom = Math.max(1, Math.min(2.5, Number(options.zoom) || 1));
   const fitCamera = () => {
     bounds.makeEmpty();
     diceGroups.forEach((group) => bounds.expandByObject(group));
@@ -194,7 +232,7 @@ export function renderDiceScene(container, players, bottomPlayerIndex) {
     const distance = Math.max(
       radius / Math.sin(verticalFov / 2),
       radius / Math.sin(horizontalFov / 2),
-    ) * 1.18;
+    ) * 1.18 / zoom;
     camera.position.copy(center).addScaledVector(viewDirection, distance);
     camera.lookAt(center.x, Math.max(center.y - 0.35, 0), center.z);
     renderer.render(scene, camera);
@@ -203,17 +241,27 @@ export function renderDiceScene(container, players, bottomPlayerIndex) {
   const positionPlayers = (bottom) => {
     diceGroups.forEach((group, index) => {
       group.position.z = index === bottom ? 2.85 : -2.85;
+      layoutDice(group, dieList(players[index], index), index === bottom);
     });
-    replayArrows.forEach(({ arrow, attacker, target }) => {
+    let firstArrowMidpoint = null;
+    replayArrows.forEach(({ shaft, head, attacker, target }, index) => {
       const from = attacker.getWorldPosition(new THREE.Vector3());
       const to = target.getWorldPosition(new THREE.Vector3());
       const direction = to.sub(from);
       const distance = direction.length();
       direction.normalize();
-      arrow.position.copy(from).addScaledVector(direction, 0.78);
-      arrow.setDirection(direction);
-      arrow.setLength(Math.max(distance - 1.65, 0.1), 0.42, 0.24);
+      const shaftLength = Math.max(distance - 1.35, 0.1);
+      shaft.position.copy(from).addScaledVector(direction, 0.78 + shaftLength / 2);
+      shaft.scale.y = shaftLength;
+      shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+      head.position.copy(to).addScaledVector(direction, -0.45);
+      head.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+      if (index === 0) firstArrowMidpoint = from.lerp(to, 0.5);
     });
+    if (label && firstArrowMidpoint) {
+      label.position.copy(firstArrowMidpoint);
+      label.position.y += 1.15;
+    }
     fitCamera();
   };
   positionPlayers(bottomPlayerIndex);
@@ -231,12 +279,23 @@ export function renderDiceScene(container, players, bottomPlayerIndex) {
   const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize);
   observer?.observe(container);
   if (!observer) window.addEventListener('resize', resize);
+  const setZoom = (value) => {
+    zoom = Math.max(1, Math.min(2.5, Number(value) || 1));
+    fitCamera();
+  };
+  const onWheel = (event) => {
+    event.preventDefault();
+    setZoom(zoom + (event.deltaY < 0 ? 0.1 : -0.1));
+  };
+  container.addEventListener('wheel', onWheel, { passive: false });
 
   return {
     setBottomPlayerIndex: positionPlayers,
+    setZoom,
     dispose() {
       observer?.disconnect();
       if (!observer) window.removeEventListener('resize', resize);
+      container.removeEventListener('wheel', onWheel);
       scene.traverse((object) => {
         object.geometry?.dispose();
         if (Array.isArray(object.material)) {

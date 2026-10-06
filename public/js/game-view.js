@@ -1,9 +1,10 @@
 import { gameUrl } from './games.js';
-import { buildReplaySteps } from './game-replay.js';
+import { buildCapturedHistory, buildReplaySteps } from './game-replay.js';
 import { profileUrl } from './links.js';
 
 let disposeDiceScene = () => {};
 let setDiceOrientation = () => {};
+let setDiceZoom = () => {};
 
 const value = (object, ...keys) => keys.reduce((result, key) => result ?? object?.[key], undefined);
 
@@ -18,10 +19,6 @@ function list(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function wasJustCaptured(die) {
-  return list(die.properties).includes('WasJustCaptured');
-}
-
 function dieLabel(die) {
   const recipe = value(die, 'recipe', 'originalRecipe') ?? '?';
   const sides = value(die, 'sides', 'size');
@@ -33,7 +30,7 @@ function dieLabel(die) {
   return { recipe, sides, rolled, skills, statuses };
 }
 
-function renderDie(document, die, captured = false) {
+function renderDie(document, die, captured = false, color = '') {
   const info = dieLabel(die);
   const role = die.replayRole;
   const roleLabel = { attacker: 'Attacker', target: 'Target', changed: 'Changed' }[role];
@@ -44,6 +41,7 @@ function renderDie(document, die, captured = false) {
     `game-die card p-2 text-center${captured ? ' game-die-captured' : ''}${roleLabel ? ` game-die-replay-${role}` : ''}`,
   );
   if (card.dataset) card.dataset.recipe = info.recipe;
+  if (/^#[\da-f]{6}$/i.test(color)) card.style.borderTopColor = color;
   if (captured) card.setAttribute('aria-disabled', 'true');
   if (roleLabel) card.append(text(document, 'span', roleLabel, 'game-die-replay-label badge'));
   card.append(
@@ -124,14 +122,52 @@ function renderPlayer(document, player, active, initiative, position, maxWins) {
   card.append(text(document, 'div', playerScoreText(player, maxWins), 'small d-block'));
   if (active) card.append(text(document, 'span', 'Active player', 'badge text-bg-primary mt-2 me-1'));
   if (initiative) card.append(text(document, 'span', 'Initiative', 'badge text-bg-warning mt-2'));
-  const dice = text(document, 'div', '', 'game-dice d-flex flex-wrap gap-2 mt-3');
-  list(player.activeDieArray).forEach((die) => dice.append(renderDie(document, die)));
-  list(player.capturedDieArray)
-    .filter(wasJustCaptured)
-    .forEach((die) => dice.append(renderDie(document, die, true)));
-  list(player.outOfPlayDieArray).forEach((die) => dice.append(renderDie(document, die, true)));
-  card.append(dice);
   return card;
+}
+
+function renderFlatField(document, players, viewing, flipped, colorPreferences, currentViewerIndex, attackStep) {
+  const field = text(document, 'div', '', 'game-flat-field');
+  for (const slot of [1, 0]) {
+    const playerIndex = slot === 0
+      ? (flipped ? 1 - viewing : viewing)
+      : 1 - (flipped ? 1 - viewing : viewing);
+    const player = players[playerIndex];
+    const side = text(document, 'section', '', `game-flat-side game-flat-side-${slot}`);
+    side.append(text(document, 'h2', `${player.playerName || `Player ${playerIndex + 1}`} dice`, 'h5'));
+    const activeDice = text(document, 'div', '', 'game-flat-active-dice');
+    list(player.activeDieArray).forEach((die) =>
+      activeDice.append(renderDie(document, die, false, player.playerColor)));
+    side.append(activeDice);
+
+    const captured = list(player.replayCapturedDieArray);
+    if (captured.length) {
+      const pile = text(document, 'div', '', 'game-flat-captured-pile');
+      pile.append(text(document, 'h3', `Captured by ${player.playerName || `Player ${playerIndex + 1}`}`, 'small fw-semibold'));
+      const capturedDice = text(document, 'div', '', 'game-flat-captured-dice');
+      captured.forEach((die) => {
+        const color = currentViewerIndex !== null && playerIndex === currentViewerIndex
+          ? colorPreferences.neutralOpponentColor
+          : currentViewerIndex !== null
+            ? colorPreferences.neutralPlayerColor
+            : players[die.originalPlayerIndex]?.playerColor;
+        capturedDice.append(renderDie(document, die, true, color));
+      });
+      pile.append(capturedDice);
+      side.append(pile);
+    }
+    field.append(side);
+  }
+  if (attackStep) {
+    const attacker = players[attackStep.playerIndex];
+    const target = players[attackStep.targetIndex];
+    field.append(text(
+      document,
+      'p',
+      `${attacker.playerName} → ${target.playerName} · ${attackStep.attackType} attack`,
+      'game-flat-attack-direction',
+    ));
+  }
+  return field;
 }
 
 function entry(data, type) {
@@ -205,6 +241,7 @@ export function renderGameView(root, data, replayOptions = {}) {
   disposeDiceScene();
   disposeDiceScene = () => {};
   setDiceOrientation = () => {};
+  setDiceZoom = () => {};
   root.replaceChildren();
   const players = list(data.playerDataArray);
   if (players.length < 2) {
@@ -222,11 +259,17 @@ export function renderGameView(root, data, replayOptions = {}) {
   const invalidStep = hasTimestamp && requestedStep < 0;
   let stepIndex = invalidStep || !hasTimestamp ? currentStepIndex : requestedStep;
   let viewPlayers = replaySteps[stepIndex].players;
+  let selectedStep = replaySteps[stepIndex];
   let sceneVersion = 0;
   const current = Number.isInteger(data.currentPlayerIdx) && data.currentPlayerIdx >= 0 ? data.currentPlayerIdx : null;
   const viewing = current === null ? 0 : current;
   let bottomPlayerIndex = viewing;
   let flipped = false;
+  let zoom = 1;
+  const colorPreferences = {
+    neutralOpponentColor: replayOptions.colorPreferences?.neutral_color_b || '#dddddd',
+    neutralPlayerColor: replayOptions.colorPreferences?.neutral_color_a || '#cccccc',
+  };
   const board = text(document, 'div', '', 'game-board');
   board.hidden = true;
   const controls = text(document, 'div', '', 'd-flex flex-wrap justify-content-between gap-2 mb-3');
@@ -235,7 +278,7 @@ export function renderGameView(root, data, replayOptions = {}) {
   flip.type = 'button';
   flip.addEventListener('click', () => {
     flipped = !flipped;
-    board.replaceChildren(playerAt(1), playerAt(0));
+    renderBoard();
     topHud.replaceChildren(hudPlayerAt(1));
     bottomHud.replaceChildren(hudPlayerAt(0));
     bottomPlayerIndex = flipped ? 1 - viewing : viewing;
@@ -266,8 +309,18 @@ export function renderGameView(root, data, replayOptions = {}) {
   const stepLink = text(document, 'a', 'Link to this step', 'btn btn-sm btn-link');
   replayControls.append(previous, next, returnToCurrent, stepLink);
   const replayStatus = text(document, 'p', '', 'small text-body-secondary mb-1');
-  const attackDirection = text(document, 'p', 'Attack direction: attackers → targets.', 'game-replay-attack-direction');
-  attackDirection.hidden = true;
+  const zoomControls = text(document, 'div', '', 'game-3d-zoom-controls');
+  const zoomOut = text(document, 'button', '−', 'btn btn-sm btn-dark');
+  zoomOut.type = 'button';
+  zoomOut.setAttribute('aria-label', 'Zoom out');
+  const zoomLabel = text(document, 'span', '1×', 'game-3d-zoom-label');
+  const zoomIn = text(document, 'button', '+', 'btn btn-sm btn-dark');
+  zoomIn.type = 'button';
+  zoomIn.setAttribute('aria-label', 'Zoom in');
+  const zoomReset = text(document, 'button', 'Reset', 'btn btn-sm btn-dark');
+  zoomReset.type = 'button';
+  zoomReset.setAttribute('aria-label', 'Reset zoom');
+  zoomControls.append(zoomOut, zoomLabel, zoomIn, zoomReset);
   const replayNotice = text(
     document,
     'p',
@@ -282,13 +335,15 @@ export function renderGameView(root, data, replayOptions = {}) {
     text(document, 'p', `${data.gameState || 'Game'} · Round ${data.roundNumber ?? '—'}`, 'text-body-secondary'),
     replayControls,
     replayStatus,
-    attackDirection,
     replayNotice,
   );
   let highlightActivity = () => {};
-  function playerAt(slot) {
+  function playerIndexAt(slot) {
     const bottomPlayer = flipped ? 1 - viewing : viewing;
-    const index = slot === 0 ? bottomPlayer : 1 - bottomPlayer;
+    return slot === 0 ? bottomPlayer : 1 - bottomPlayer;
+  }
+  function playerAt(slot) {
+    const index = playerIndexAt(slot);
     return renderPlayer(
       document,
       viewPlayers[index],
@@ -312,13 +367,25 @@ export function renderGameView(root, data, replayOptions = {}) {
   }
   const scene = text(document, 'div', '', 'game-play-area');
   const canvas = text(document, 'div', '', 'game-3d-board');
-  canvas.setAttribute('aria-hidden', 'true');
+  canvas.append(zoomControls);
   const topHud = text(document, 'div', '', 'game-3d-hud game-3d-hud-top');
   const bottomHud = text(document, 'div', '', 'game-3d-hud game-3d-hud-bottom');
   scene.append(topHud, canvas, bottomHud);
   root.append(scene, board);
   const renderBoard = () => {
-    board.replaceChildren(playerAt(1), playerAt(0));
+    board.replaceChildren(
+      renderFlatField(
+        document,
+        viewPlayers,
+        viewing,
+        flipped,
+        colorPreferences,
+        current,
+        selectedStep.type === 'attack' ? selectedStep : null,
+      ),
+      playerAt(1),
+      playerAt(0),
+    );
     topHud.replaceChildren(hudPlayerAt(1));
     bottomHud.replaceChildren(hudPlayerAt(0));
   };
@@ -329,10 +396,18 @@ export function renderGameView(root, data, replayOptions = {}) {
     if (!document.defaultView) return;
     import('./dice-scene.js').then(({ renderDiceScene }) => {
       if (!canvas.isConnected || generation !== sceneVersion) return;
-      const instance = renderDiceScene(canvas, viewPlayers, bottomPlayerIndex);
+      const step = replaySteps[stepIndex];
+      const instance = renderDiceScene(canvas, viewPlayers, bottomPlayerIndex, {
+        zoom,
+        attackType: step.type === 'attack' ? step.attackType : null,
+        viewPlayerIndex: current,
+        neutralOpponentColor: colorPreferences.neutralOpponentColor,
+        neutralPlayerColor: colorPreferences.neutralPlayerColor,
+      });
       if (canvas.isConnected && generation === sceneVersion) {
         disposeDiceScene = instance.dispose;
         setDiceOrientation = instance.setBottomPlayerIndex;
+        setDiceZoom = instance.setZoom || (() => {});
       } else {
         instance.dispose();
       }
@@ -341,12 +416,59 @@ export function renderGameView(root, data, replayOptions = {}) {
       scene.hidden = true;
       board.hidden = false;
       toggleView.hidden = true;
+      zoomControls.hidden = true;
     });
   };
+  const setZoom = (nextZoom) => {
+    zoom = Math.max(1, Math.min(2.5, nextZoom));
+    zoomLabel.textContent = `${zoom.toFixed(1).replace(/\.0$/, '')}×`;
+    setDiceZoom(zoom);
+  };
+  zoomOut.addEventListener('click', () => setZoom(zoom - 0.25));
+  zoomIn.addEventListener('click', () => setZoom(zoom + 0.25));
+  zoomReset.addEventListener('click', () => setZoom(1));
   const updateStep = (nextStepIndex, updateHash = true) => {
     stepIndex = nextStepIndex;
     const step = replaySteps[stepIndex];
-    viewPlayers = step.players;
+    selectedStep = step;
+    const throughLogIndex = step.type === 'current'
+      ? Infinity
+      : step.type === 'attack'
+        ? step.logIndex - 1
+        : step.logIndex;
+    const capturedHistory = buildCapturedHistory(data.gameActionLog, players, throughLogIndex);
+    if (step.type === 'result') {
+      capturedHistory.forEach((captures) => captures.forEach((die) => {
+        if (die.logIndex === step.logIndex) die.replayRole = 'changed';
+      }));
+    }
+    if (step.type === 'current') {
+      players.forEach((player, index) => {
+        const currentCaptures = list(player.capturedDieArray);
+        const counts = new Map();
+        capturedHistory[index].forEach((die) => {
+          const key = `${die.recipe}:${die.value}`;
+          counts.set(key, (counts.get(key) || 0) + 1);
+        });
+        currentCaptures.forEach((die) => {
+          const key = `${value(die, 'recipe', 'originalRecipe')}:${value(die, 'value', 'currentValue', 'roll')}`;
+          const count = counts.get(key) || 0;
+          if (count < currentCaptures.filter((candidate) =>
+            `${value(candidate, 'recipe', 'originalRecipe')}:${value(candidate, 'value', 'currentValue', 'roll')}` === key).length) {
+            capturedHistory[index].push({
+              ...die,
+              originalPlayerIndex: 1 - index,
+              capturedByIndex: index,
+            });
+            counts.set(key, count + 1);
+          }
+        });
+      });
+    }
+    viewPlayers = step.players.map((player, index) => ({
+      ...player,
+      replayCapturedDieArray: capturedHistory[index],
+    }));
     highlightActivity(step.logIndex);
     renderBoard();
     renderScene();
@@ -362,10 +484,8 @@ export function renderGameView(root, data, replayOptions = {}) {
           ? 'Attack result'
           : step.message;
       replayStatus.textContent = `History · ${attackText} · step ${stepIndex + 1} of ${currentStepIndex}`;
-      attackDirection.hidden = step.type !== 'attack';
     } else if (!invalidStep) {
       replayStatus.textContent = 'Current game state.';
-      attackDirection.hidden = true;
     }
     const gameHash = `#game?gameId=${encodeURIComponent(data.gameId)}`;
     const stepHash = step.type === 'current' || step.timestamp === null || step.timestamp === undefined

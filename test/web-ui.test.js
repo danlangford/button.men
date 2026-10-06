@@ -486,6 +486,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
     playerDataArray: [
       {
         playerName: 'alice',
+        playerColor: '#112233',
         button: { name: 'Avis', recipe: '1234' },
         roundScore: 2,
         sideScore: 3,
@@ -499,6 +500,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
       },
       {
         playerName: 'dan',
+        playerColor: '#445566',
         button: { name: 'Bauer', recipe: '6789' },
         roundScore: 1,
         sideScore: 4,
@@ -508,7 +510,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
     ],
     gameActionLog: [{ timestamp: 2, player: 'alice', message: 'attacked' }],
     gameChatLog: [{ timestamp: 1, player: 'dan', message: 'hello' }],
-  });
+  }, { colorPreferences: { neutral_color_a: '#aabbcc', neutral_color_b: '#ddeeff' } });
   assert.match(root.textContent, /alice/);
   assert.match(root.textContent, /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
   assert.match(root.textContent, /Poison/);
@@ -518,21 +520,28 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.doesNotMatch(root.textContent, /small d-block text-body-secondary/);
   const canvas = allElements(root).find((element) => element.className === 'game-3d-board');
   assert.ok(canvas);
-  assert.equal(canvas.getAttribute('aria-hidden'), 'true');
+  assert.equal(canvas.getAttribute('aria-hidden'), null);
   const status = allElements(root).find((element) => element.tagName === 'small' && element.textContent === 'attacker');
   assert.ok(status);
   const board = allElements(root).find((element) => element.className === 'game-board');
   assert.equal(board.hidden, true);
-  assert.match(board.children[0].textContent, /alice/);
-  assert.match(board.children[1].textContent, /dan/);
+  const flatField = board.children[0];
+  assert.equal(flatField.className, 'game-flat-field');
+  assert.match(flatField.children[0].textContent, /alice/);
+  assert.match(flatField.children[1].textContent, /dan/);
+  assert.match(board.children[1].textContent, /alice/);
+  assert.match(board.children[2].textContent, /dan/);
   assert.ok(allElements(root).some((element) => element.textContent === 'alice' && element.href === profileUrl('alice')));
   assert.ok(allElements(root).some((element) => element.textContent === 'dan' && element.href === profileUrl('dan')));
-  const aliceDice = board.children[0].children.find((element) => element.className?.startsWith('game-dice '));
-  assert.equal(aliceDice.children.length, 2);
-  const recentlyCaptured = aliceDice.children.find((element) => element.className.includes('game-die-captured'));
+  const aliceDice = flatField.children[0];
+  const capturePile = aliceDice.children.find((element) => element.className === 'game-flat-captured-pile');
+  const capturedDice = capturePile.children.find((element) => element.className === 'game-flat-captured-dice');
+  assert.equal(capturedDice.children.length, 2);
+  const recentlyCaptured = capturedDice.children.find((element) => element.textContent.includes('3'));
   assert.match(recentlyCaptured.textContent, /3/);
   assert.equal(recentlyCaptured.getAttribute('aria-disabled'), 'true');
-  assert.doesNotMatch(aliceDice.textContent, /1/);
+  assert.equal(recentlyCaptured.style.borderTopColor, '#aabbcc');
+  assert.match(capturedDice.textContent, /1/);
   const playArea = allElements(root).find((element) => element.className === 'game-play-area');
   assert.equal(playArea.children[0].className, 'game-3d-hud game-3d-hud-top');
   assert.equal(playArea.children[1], canvas);
@@ -545,6 +554,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.ok(hudPills.some((element) => element.textContent === '3·d4'));
   assert.match(hud.map((element) => element.textContent).join(' '), /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
   assert.match(hud.map((element) => element.textContent).join(' '), /Status: attacker/);
+  assert.ok(allElements(root).some((element) => element.getAttribute('aria-label') === 'Zoom in'));
   const toggle = allElements(root).find((element) => element.textContent === 'Show flat game state');
   toggle.onclick();
   assert.equal(allElements(root).find((element) => element.className === 'game-play-area').hidden, true);
@@ -556,8 +566,9 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   const flip = allElements(root).find((element) => element.textContent === 'Flip orientation');
   assert.ok(flip);
   flip.onclick();
-  assert.match(board.children[0].textContent, /dan/);
-  assert.match(board.children[1].textContent, /alice/);
+  assert.match(board.children[0].children[0].textContent, /dan/);
+  assert.match(board.children[1].textContent, /dan/);
+  assert.match(board.children[2].textContent, /alice/);
   const all = allElements(root).find((element) => element.textContent === 'Chat & Game Log');
   assert.ok(all);
   all.onclick();

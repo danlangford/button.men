@@ -11,6 +11,7 @@
 - [x] 2.2 Mark attackers and targets in both flat and 3D views and show the best-effort limitation; verify markers are textually distinct and current rendering remains intact.
 - [x] 2.3 Add hash-step deep links, invalid-step fallback notice, and current-state default; verify valid, invalid, and missing step routing.
 - [x] 2.4 Emphasize attack participants and direction, include non-chat action entries, and highlight the selected game-log row; verify each in focused UI tests.
+- [x] 2.5 Show whole-game captured dice from logs with preference-aware colors, put player details below the unified flat field, and add prominent attack cues and 3D zoom controls.
 
 ## 3. Integration validation
 

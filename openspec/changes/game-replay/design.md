@@ -14,6 +14,9 @@ Upstream source references: `src/engine/BMInterface.php::load_api_game_data`,
 `src/engine/BMGameAction.php::messageAttacker` /
 `messageDefender`, and
 `src/engine/BMSkill.php::skill_name_abbreviation_mapping` (`z` is Speed).
+`BMInterface::load_player_colors` / `determine_game_colors` map saved color
+preferences to each player's `playerColor`; `BMGame::get_capturedDieArray`
+exposes only the current round's pile, which `BMGame::reset_play_state` clears.
 
 ## Goals / Non-Goals
 
@@ -54,14 +57,21 @@ Upstream source references: `src/engine/BMInterface.php::load_api_game_data`,
   and always appends the exact current state. A non-attack event retains the
   nearest reconstructed board because the public log does not provide snapshots.
 - **Reuse the existing game screen and 3D/flat switch.** Add replay controls,
-  non-colour attacker/target labels and emphasis, a 3D directional arrow and a
-  flat-view direction label, selected action-log row highlighting, and a
-  history notice to the existing game-view renderer. Both renderers consume
-  the same selected snapshot and marker metadata. No new dependency or server
-  component is needed.
+  non-colour attacker/target labels and emphasis, thick 3D arrows with a nearby
+  attack label, and an in-field flat-view direction cue. Add accessible 3D zoom
+  controls, selected action-log row highlighting, and a history notice. Both
+  renderers consume the same selected snapshot and marker metadata. No new
+  dependency or server component is needed.
+- **Derive a whole-game captured pile from attack logs.** Since upstream clears
+  captured-die arrays at round boundaries, accumulate logged captures by
+  captor, retaining the target's logged value and original owner. At historical
+  steps, show only captures through that point; use the current API pile as a
+  fallback for captures missing from the log. Active dice use upstream
+  `playerColor`; captured dice on the viewer's side use their neutral-opponent
+  preference, while the opponent's captured dice use the neutral-player color.
 - **Address proposal suggestions.** Keep replay inside the game screen
   (adopted); preserve separate attack/result steps (adopted); use the existing
-  hash-query route with a numeric step index (adopted); visibly mark attackers
+  hash-query route with the log timestamp (adopted); visibly mark attackers
   and targets with text/borders as well as color and show their direction
   (adapted); use upstream log prose for best-effort reconstruction rather than
   adding API snapshots (adapted per the developer's direction). Replay covers

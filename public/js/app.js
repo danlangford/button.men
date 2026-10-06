@@ -152,9 +152,15 @@ async function showGame(player) {
   const params = new URLSearchParams(hashQuery());
   const gameId = params.get('gameId');
   if (!gameId || !/^\d+$/.test(gameId)) throw new Error('A game id is required');
-  const data = await gameData(gameId);
+  const [data, colorPreferences] = await Promise.all([
+    gameData(gameId),
+    player ? playerPreferences().catch(() => null) : Promise.resolve(null),
+  ]);
   if (request !== viewRequest) return;
-  renderGameView($('game-content'), data, { timestamp: params.get('timestamp') });
+  renderGameView($('game-content'), data, {
+    timestamp: params.get('timestamp'),
+    colorPreferences,
+  });
 }
 
 function hashQuery() {

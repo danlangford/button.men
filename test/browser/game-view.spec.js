@@ -91,8 +91,13 @@ test('replay links select a step and invalid steps fall back to the current game
     currentPlayerIdx: 0,
     activePlayerIdx: 0,
     playerDataArray: [
-      { playerName: 'alice', activeDieArray: [{ recipe: 'z(8)', sides: 8, value: 3, skillArray: ['Speed'] }] },
-      { playerName: 'bob', activeDieArray: [{ recipe: 6, value: 4 }] },
+      {
+        playerName: 'alice',
+        playerColor: '#dd99dd',
+        activeDieArray: [{ recipe: 'z(8)', sides: 8, value: 3, skillArray: ['Speed'] }],
+        capturedDieArray: [{ recipe: 6, sides: 6, value: 4, properties: ['WasJustCaptured'] }],
+      },
+      { playerName: 'bob', playerColor: '#ddffdd', activeDieArray: [{ recipe: 6, value: 4 }] },
     ],
     gameActionLog: [{
       timestamp: 1,
@@ -110,7 +115,7 @@ test('replay links select a step and invalid steps fall back to the current game
   };
   await page.route('**/js/dice-scene.js', (route) => route.fulfill({
     contentType: 'text/javascript',
-    body: 'export function renderDiceScene() { return { dispose() {}, setBottomPlayerIndex() {} }; }',
+    body: 'export function renderDiceScene(container, players, bottom, options) { container.dataset.attackType = options.attackType || ""; container.dataset.zoom = String(options.zoom); container.dataset.neutralOpponentColor = options.neutralOpponentColor; return { dispose() {}, setBottomPlayerIndex() {}, setZoom(value) { container.dataset.zoom = String(value); } }; }',
   }));
   await page.route('**/api/responder', async (route) => {
     const request = JSON.parse(route.request().postData());
@@ -118,6 +123,8 @@ test('replay links select a step and invalid steps fall back to the current game
       ? { status: 'ok', data: { userName: 'alice' } }
       : request.type === 'loadGameData'
         ? { status: 'ok', data: game }
+        : request.type === 'loadPlayerInfo'
+          ? { status: 'ok', data: { user_prefs: { neutral_color_a: '#cccccc', neutral_color_b: '#dddddd' } } }
         : { status: 'failed', message: 'Unexpected API request.' };
     await route.fulfill({ json: response });
   });
@@ -127,7 +134,12 @@ test('replay links select a step and invalid steps fall back to the current game
   await expect(page.getByRole('link', { name: 'Take action on buttonweavers.com' })).toBeHidden();
   await expect(page.getByRole('link', { name: 'Link to this step' })).toHaveAttribute('href', '#game?gameId=22&timestamp=1');
   await expect(page.locator('.game-3d-hud .game-hud-pill').filter({ hasText: 'Attacker' })).toBeVisible();
-  await expect(page.getByText('Attack direction: attackers → targets.')).toBeVisible();
+  await expect(page.getByText('Attack direction: attackers → targets.')).toHaveCount(0);
+  const scene = page.locator('.game-3d-board');
+  await expect(scene).toHaveAttribute('data-attack-type', 'Skill');
+  await expect(scene).toHaveAttribute('data-neutral-opponent-color', '#dddddd');
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(scene).toHaveAttribute('data-zoom', '1.25');
   await expect(page.locator('.game-event-current-step')).toContainText('alice performed Skill attack');
   await expect(page.getByText('bob passed')).toBeVisible();
   await expect(page.getByText('alice set swing values: V=6')).toBeVisible();
@@ -136,8 +148,13 @@ test('replay links select a step and invalid steps fall back to the current game
   await page.getByRole('button', { name: 'Show flat game state' }).click();
   await expect(page.locator('.game-die-replay-attacker')).toBeVisible();
   await expect(page.locator('.game-die-replay-target')).toBeVisible();
-  await page.getByRole('button', { name: 'Show 3D game view' }).click();
+  await expect(page.locator('.game-flat-attack-direction')).toContainText('alice → bob · Skill attack');
+  await expect(page.locator('.game-flat-captured-pile')).toHaveCount(0);
   await page.getByRole('button', { name: 'Next step' }).click();
+  await expect(page.locator('.game-flat-captured-pile')).toContainText('Captured by alice');
+  await expect(page.locator('.game-flat-captured-dice .game-die-replay-changed')).toBeVisible();
+  await page.getByRole('button', { name: 'Show 3D game view' }).click();
+  await expect(scene).toHaveAttribute('data-zoom', '1.25');
   await expect(page).toHaveURL(/#game\?gameId=22&timestamp=1$/);
   await page.getByRole('button', { name: 'Next step' }).click();
   await page.getByRole('button', { name: 'Next step' }).click();
