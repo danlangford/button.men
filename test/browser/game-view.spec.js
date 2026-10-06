@@ -122,10 +122,10 @@ test('replay links select a step and invalid steps fall back to the current game
     await route.fulfill({ json: response });
   });
 
-  await page.goto('/#game?gameId=22&step=0');
+  await page.goto('/#game?gameId=22&timestamp=1');
   await expect(page.getByText('History · alice used Skill attack against bob')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Take action on buttonweavers.com' })).toBeHidden();
-  await expect(page.getByRole('link', { name: 'Link to this step' })).toHaveAttribute('href', '#game?gameId=22&step=0');
+  await expect(page.getByRole('link', { name: 'Link to this step' })).toHaveAttribute('href', '#game?gameId=22&timestamp=1');
   await expect(page.locator('.game-3d-hud .game-hud-pill').filter({ hasText: 'Attacker' })).toBeVisible();
   await expect(page.getByText('Attack direction: attackers → targets.')).toBeVisible();
   await expect(page.locator('.game-event-current-step')).toContainText('alice performed Skill attack');
@@ -138,9 +138,14 @@ test('replay links select a step and invalid steps fall back to the current game
   await expect(page.locator('.game-die-replay-target')).toBeVisible();
   await page.getByRole('button', { name: 'Show 3D game view' }).click();
   await page.getByRole('button', { name: 'Next step' }).click();
-  await expect(page).toHaveURL(/#game\?gameId=22&step=1$/);
+  await expect(page).toHaveURL(/#game\?gameId=22&timestamp=1$/);
+  await page.getByRole('button', { name: 'Next step' }).click();
+  await page.getByRole('button', { name: 'Next step' }).click();
+  await page.getByRole('button', { name: 'Next step' }).click();
+  await expect(page.getByText('Current game state.')).toBeVisible();
+  await expect(page).toHaveURL(/#game\?gameId=22$/);
 
-  await page.goto('/#game?gameId=22&step=8');
+  await page.goto('/#game?gameId=22&timestamp=999');
   await expect(page.getByText('Replay step not found; showing the current game state.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Take action on buttonweavers.com' })).toBeVisible();
 

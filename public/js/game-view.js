@@ -212,15 +212,15 @@ export function renderGameView(root, data, replayOptions = {}) {
     return;
   }
   const document = root.ownerDocument;
-  const replaySteps = buildReplaySteps(data.gameActionLog, players);
+  const replaySteps = buildReplaySteps(data.gameActionLog, players, data.roundNumber);
   const currentStepIndex = replaySteps.length - 1;
-  const stepParam = replayOptions.step;
-  const requestedStep = stepParam !== null && stepParam !== undefined && /^\d+$/.test(String(stepParam))
-    ? Number(stepParam)
-    : Number.NaN;
-  const invalidStep = stepParam !== null && stepParam !== undefined &&
-    (!Number.isSafeInteger(requestedStep) || requestedStep < 0 || requestedStep > currentStepIndex);
-  let stepIndex = invalidStep || Number.isNaN(requestedStep) ? currentStepIndex : requestedStep;
+  const timestampParam = replayOptions.timestamp;
+  const hasTimestamp = timestampParam !== null && timestampParam !== undefined;
+  const requestedStep = hasTimestamp && /^\d+$/.test(String(timestampParam))
+    ? replaySteps.findIndex((step) => step.type !== 'current' && String(step.timestamp) === String(timestampParam))
+    : -1;
+  const invalidStep = hasTimestamp && requestedStep < 0;
+  let stepIndex = invalidStep || !hasTimestamp ? currentStepIndex : requestedStep;
   let viewPlayers = replaySteps[stepIndex].players;
   let sceneVersion = 0;
   const current = Number.isInteger(data.currentPlayerIdx) && data.currentPlayerIdx >= 0 ? data.currentPlayerIdx : null;
@@ -367,13 +367,13 @@ export function renderGameView(root, data, replayOptions = {}) {
       replayStatus.textContent = 'Current game state.';
       attackDirection.hidden = true;
     }
-    stepLink.href = `#game?gameId=${encodeURIComponent(data.gameId)}&step=${stepIndex}`;
+    const gameHash = `#game?gameId=${encodeURIComponent(data.gameId)}`;
+    const stepHash = step.type === 'current' || step.timestamp === null || step.timestamp === undefined
+      ? gameHash
+      : `${gameHash}&timestamp=${encodeURIComponent(String(step.timestamp))}`;
+    stepLink.href = stepHash;
     if (updateHash && document.defaultView?.history?.replaceState) {
-      document.defaultView.history.replaceState(
-        null,
-        '',
-        `#game?gameId=${encodeURIComponent(data.gameId)}&step=${stepIndex}`,
-      );
+      document.defaultView.history.replaceState(null, '', stepHash);
     }
   };
   previous.addEventListener('click', () => {

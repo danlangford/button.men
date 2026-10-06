@@ -104,3 +104,66 @@ test('game replay keeps pass and option-selection log entries as steps', () => {
   assert.equal(steps[3].logIndex, 2);
   assert.equal(steps[4].players, players);
 });
+
+test('game replay keeps roles local to each attack and restores captures for its result', () => {
+  const currentPlayers = [
+    {
+      playerName: 'alice',
+      activeDieArray: [{ recipe: 6, value: 5 }, { recipe: 8, value: 2 }],
+      capturedDieArray: [{ recipe: 4, value: 4 }, { recipe: 10, value: 3 }],
+    },
+    {
+      playerName: 'bob',
+      activeDieArray: [],
+      capturedDieArray: [],
+    },
+  ];
+  const steps = buildReplaySteps([
+    {
+      timestamp: 10,
+      player: 'alice',
+      message: 'alice performed Skill attack using [(6):2] against [(4):4]; Defender (4) was captured; Attacker (6) rerolled 2 => 5',
+    },
+    {
+      timestamp: 20,
+      player: 'alice',
+      message: 'alice performed Power attack using [(8):3] against [(10):3]; Defender (10) was captured; Attacker (8) rerolled 3 => 2',
+    },
+  ], currentPlayers);
+
+  assert.deepEqual(steps.map((step) => step.type), ['attack', 'result', 'attack', 'result', 'current']);
+  assert.equal(steps[0].players[0].activeDieArray[0].replayRole, 'attacker');
+  assert.equal(steps[0].players[0].activeDieArray[1].replayRole, undefined);
+  assert.equal(steps[0].players[1].activeDieArray.find((die) => die.recipe === 4).replayRole, 'target');
+  assert.equal(steps[0].players[1].activeDieArray.find((die) => die.recipe === 10).replayRole, undefined);
+  assert.equal(steps[1].players[0].activeDieArray[0].replayRole, 'changed');
+  assert.equal(steps[1].players[0].activeDieArray[1].replayRole, undefined);
+  assert.deepEqual(steps[1].players[0].capturedDieArray.map((die) => [die.recipe, die.value, die.replayRole]), [
+    [4, 4, 'changed'],
+  ]);
+  assert.equal(steps[2].players[0].activeDieArray[0].replayRole, undefined);
+  assert.equal(steps[2].players[0].activeDieArray[1].replayRole, 'attacker');
+  assert.equal(steps[2].players[1].activeDieArray[0].replayRole, 'target');
+  assert.deepEqual(steps[3].players[0].capturedDieArray.map((die) => [die.recipe, die.value, die.replayRole]), [
+    [4, 4, undefined],
+    [10, 3, 'changed'],
+  ]);
+  assert.equal(steps[3].players[0].activeDieArray[1].value, 2);
+  assert.equal(steps[4].players, currentPlayers);
+  assert.equal(currentPlayers[0].capturedDieArray[0].replayRole, undefined);
+});
+
+test('game replay begins after the previous round boundary', () => {
+  const players = [
+    { playerName: 'alice', activeDieArray: [{ recipe: 6, value: 3 }] },
+    { playerName: 'bob', activeDieArray: [{ recipe: 8, value: 4 }] },
+  ];
+  const steps = buildReplaySteps([
+    { timestamp: 1, player: 'alice', message: 'alice performed Skill attack using [(6):2] against [(8):4]' },
+    { timestamp: 2, player: 'alice', message: 'End of round: alice won round 1 (1 vs. 0)' },
+    { timestamp: 3, player: 'alice', message: 'alice performed Skill attack using [(6):3] against [(8):4]' },
+  ], players, 2);
+
+  assert.deepEqual(steps.map((step) => step.type), ['attack', 'result', 'current']);
+  assert.equal(steps[0].timestamp, 3);
+});

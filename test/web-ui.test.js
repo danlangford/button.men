@@ -630,18 +630,18 @@ test('web-ui: Game replay - steps backward and forward and hides external action
       player: 'alice',
       message: 'alice performed Skill attack using [z(8):2] against [(6):4]; Defender (6) was captured; Attacker z(8) rerolled 2 => 3',
     }],
-  }, { step: '0' });
+  }, { timestamp: '1' });
   const linkedElements = allElements(linkedRoot);
   assert.match(linkedElements.find((element) => element.className === 'small text-body-secondary mb-1').textContent, /Skill attack/);
   assert.equal(linkedElements.find((element) => element.textContent === 'Take action on buttonweavers.com').hidden, true);
-  assert.equal(linkedElements.find((element) => element.textContent === 'Link to this step').href, '#game?gameId=22&step=0');
+  assert.equal(linkedElements.find((element) => element.textContent === 'Link to this step').href, '#game?gameId=22&timestamp=1');
 
   const invalidRoot = document.createElement('main');
   renderGameView(invalidRoot, {
     gameId: 22,
     playerDataArray: [{ playerName: 'alice' }, { playerName: 'bob' }],
     gameActionLog: [],
-  }, { step: '8' });
+  }, { timestamp: '8' });
   assert.match(allElements(invalidRoot).find((element) => element.className === 'small text-body-secondary mb-1').textContent, /step not found/);
 });
 
