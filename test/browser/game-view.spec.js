@@ -153,6 +153,9 @@ test('replay links select a step and invalid steps fall back to the current game
   await page.getByRole('button', { name: 'Next step' }).click();
   await expect(page.locator('.game-flat-captured-pile')).toContainText('Captured by alice');
   await expect(page.locator('.game-flat-captured-dice .game-die-replay-changed')).toBeVisible();
+  const capturedPile = await page.locator('.game-flat-captured-pile').boundingBox();
+  const activeDice = await page.locator('.game-flat-active-dice').first().boundingBox();
+  expect(capturedPile.x).toBeGreaterThanOrEqual(activeDice.x + activeDice.width - 1);
   await page.getByRole('button', { name: 'Show 3D game view' }).click();
   await expect(scene).toHaveAttribute('data-zoom', '1.25');
   await expect(page).toHaveURL(/#game\?gameId=22&timestamp=1$/);

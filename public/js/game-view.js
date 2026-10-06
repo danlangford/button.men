@@ -436,7 +436,7 @@ export function renderGameView(root, data, replayOptions = {}) {
       : step.type === 'attack'
         ? step.logIndex - 1
         : step.logIndex;
-    const capturedHistory = buildCapturedHistory(data.gameActionLog, players, throughLogIndex);
+    const capturedHistory = buildCapturedHistory(data.gameActionLog, players, throughLogIndex, data.roundNumber);
     if (step.type === 'result') {
       capturedHistory.forEach((captures) => captures.forEach((die) => {
         if (die.logIndex === step.logIndex) die.replayRole = 'changed';

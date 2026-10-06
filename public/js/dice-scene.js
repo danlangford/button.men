@@ -94,7 +94,7 @@ function makeDie(die, color) {
   return mesh;
 }
 
-function layoutDice(group, dice, bottomPlayer) {
+function layoutDice(group) {
   const activeDice = group.children.filter((mesh) => !mesh.userData.isCaptured);
   const capturedDice = group.children.filter((mesh) => mesh.userData.isCaptured);
   const columns = activeDice.length <= 5 ? Math.max(activeDice.length, 1) : Math.ceil(activeDice.length / 2);
@@ -111,7 +111,16 @@ function layoutDice(group, dice, bottomPlayer) {
     mesh.position.z = (row - ((rows - 1) / 2)) * zSpacing;
   });
   capturedDice.forEach((mesh, index) => {
-    mesh.position.set((index - ((capturedDice.length - 1) / 2)) * 1.15, 0.72, bottomPlayer ? 1.45 : -1.45);
+    const columns = 3;
+    const rows = Math.ceil(capturedDice.length / columns);
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    const itemsInRow = Math.min(columns, capturedDice.length - row * columns);
+    mesh.position.set(
+      7.1 + (column - ((itemsInRow - 1) / 2)) * 0.9,
+      0.72,
+      (row - ((rows - 1) / 2)) * 0.9,
+    );
   });
 }
 
@@ -166,7 +175,7 @@ export function renderDiceScene(container, players, bottomPlayerIndex, options =
   scene.add(light);
 
   const felt = new THREE.Mesh(
-    new THREE.PlaneGeometry(18, 10),
+    new THREE.PlaneGeometry(22, 10),
     new THREE.MeshStandardMaterial({ color: '#31564c', roughness: 0.94 }),
   );
   felt.rotation.x = -Math.PI / 2;
@@ -174,7 +183,7 @@ export function renderDiceScene(container, players, bottomPlayerIndex, options =
   scene.add(felt);
 
   const railMaterial = new THREE.MeshStandardMaterial({ color: '#70472d', roughness: 0.72 });
-  for (const [x, z, width, depth] of [[0, -5.1, 18.3, 0.3], [0, 5.1, 18.3, 0.3], [-9, 0, 0.3, 10], [9, 0, 0.3, 10]]) {
+  for (const [x, z, width, depth] of [[0, -5.1, 22.3, 0.3], [0, 5.1, 22.3, 0.3], [-11, 0, 0.3, 10], [11, 0, 0.3, 10]]) {
     const rail = new THREE.Mesh(new THREE.BoxGeometry(width, 0.55, depth), railMaterial);
     rail.position.set(x, 0.2, z);
     rail.castShadow = true;
@@ -189,7 +198,7 @@ export function renderDiceScene(container, players, bottomPlayerIndex, options =
       const mesh = makeDie(die, die.justCaptured ? capturedColor(die, players, options) : color);
       group.add(mesh);
     });
-    layoutDice(group, dice, playerIndex === bottomPlayerIndex);
+    layoutDice(group);
     scene.add(group);
     return group;
   });
@@ -241,7 +250,7 @@ export function renderDiceScene(container, players, bottomPlayerIndex, options =
   const positionPlayers = (bottom) => {
     diceGroups.forEach((group, index) => {
       group.position.z = index === bottom ? 2.85 : -2.85;
-      layoutDice(group, dieList(players[index], index), index === bottom);
+      layoutDice(group);
     });
     let firstArrowMidpoint = null;
     replayArrows.forEach(({ shaft, head, attacker, target }, index) => {

@@ -113,13 +113,19 @@
       border-radius: .75rem;
       background: #31564c;
     }
-    .game-flat-side { min-width: 0; color: #fff; }
+    .game-flat-side {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      min-width: 0;
+      color: #fff;
+    }
+    .game-flat-side > h2 { grid-column: 1 / -1; }
     .game-flat-active-dice,
     .game-flat-captured-dice { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .5rem; }
     .game-flat-captured-pile {
-      margin-top: .75rem;
-      padding-top: .5rem;
-      border-top: 1px solid rgb(255 255 255 / 30%);
+      max-width: 8rem;
+      padding-left: .5rem;
+      border-left: 1px solid rgb(255 255 255 / 30%);
     }
     .game-flat-attack-direction {
       grid-column: 1 / -1;
@@ -144,6 +150,7 @@
       }
       .game-flat-field { gap: .35rem; padding: .4rem; }
       .game-flat-side h2 { font-size: .95rem; }
+      .game-flat-captured-pile { max-width: 5rem; padding-left: .3rem; }
       .game-flat-active-dice, .game-flat-captured-dice { gap: .3rem; }
       .game-player { min-width: 0; }
       .game-die { min-width: 4rem; overflow-wrap: anywhere; }

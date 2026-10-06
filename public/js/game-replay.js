@@ -366,19 +366,29 @@ export function buildReplaySteps(actionLog, currentPlayers, roundNumber) {
   ];
 }
 
-export function buildCapturedHistory(actionLog, players, throughLogIndex = Infinity) {
+export function buildCapturedHistory(actionLog, players, throughLogIndex = Infinity, roundNumber) {
   const playerList = list(players);
   const history = playerList.map(() => []);
   const entries = list(actionLog)
     .map((entry, originalIndex) => ({ ...entry, originalIndex }))
     .sort((first, second) => (Number(first.timestamp) || 0) - (Number(second.timestamp) || 0) ||
       first.originalIndex - second.originalIndex);
+  const roundStart = roundBoundaryIndex(entries, roundNumber);
+  const roundEnd = Number.isFinite(Number(roundNumber))
+    ? entries.findIndex((entry, index) => {
+      if (index <= roundStart) return false;
+      const message = String(entry.message || '');
+      const match = message.match(/^End of round:.*won round (\d+)\b/i) ||
+        message.match(/^Round (\d+) ended in a draw\b/i);
+      return match && Number(match[1]) === Number(roundNumber);
+    })
+    : -1;
   const limitEntry = Number.isFinite(throughLogIndex)
     ? entries.find((entry) => entry.originalIndex === throughLogIndex)
     : null;
   const limitTimestamp = Number(limitEntry?.timestamp) || 0;
 
-  for (const entry of entries) {
+  for (const entry of entries.slice(roundStart + 1, roundEnd < 0 ? undefined : roundEnd + 1)) {
     if (Number.isFinite(throughLogIndex) && (
       !limitEntry ||
       (Number(entry.timestamp) || 0) > limitTimestamp ||

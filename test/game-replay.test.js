@@ -169,7 +169,7 @@ test('game replay begins after the previous round boundary', () => {
   assert.equal(steps[0].timestamp, 3);
 });
 
-test('capture history retains captured dice and logged values across rounds', () => {
+test('capture history resets at the start of each round', () => {
   const players = [
     { playerName: 'alice' },
     { playerName: 'bob' },
@@ -189,6 +189,7 @@ test('capture history retains captured dice and logged values across rounds', ()
   ];
 
   const allCaptures = buildCapturedHistory(log, players);
+  const currentRoundCaptures = buildCapturedHistory(log, players, Infinity, 2);
   assert.deepEqual(allCaptures.map((captures) => captures.map((die) => [
     die.recipe,
     die.value,
@@ -197,6 +198,15 @@ test('capture history retains captured dice and logged values across rounds', ()
   ])), [
     [['(6)', 3, 1, 0]],
     [['(8)', 2, 0, 1]],
+  ]);
+  assert.deepEqual(currentRoundCaptures.map((captures) => captures.map((die) => die.recipe)), [
+    [],
+    ['(8)'],
+  ]);
+  assert.deepEqual(buildCapturedHistory(log, players, Infinity, 1).map((captures) =>
+    captures.map((die) => die.recipe)), [
+    ['(6)'],
+    [],
   ]);
   assert.equal(buildCapturedHistory(log, players, 0)[0].length, 1);
   assert.equal(buildCapturedHistory(log, players, 0)[1].length, 0);
