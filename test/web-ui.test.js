@@ -608,9 +608,41 @@ test('web-ui: Game replay - steps backward and forward and hides external action
   assert.equal(previous.disabled, true);
   assert.match(status.textContent, /Skill attack/);
   assert.equal(action.hidden, true);
+  assert.ok(elements().some((element) => String(element.className || '').includes('game-die-replay-attacker') &&
+    element.textContent.includes('Attacker')));
+  assert.ok(elements().some((element) => String(element.className || '').includes('game-die-replay-target') &&
+    element.textContent.includes('Target')));
+  assert.ok(elements().some((element) => element.className === 'game-hud-pill' &&
+    element.textContent.startsWith('Attacker ·')));
   current.onclick();
   assert.equal(next.disabled, true);
   assert.equal(action.hidden, false);
+
+  const linkedRoot = document.createElement('main');
+  renderGameView(linkedRoot, {
+    gameId: 22,
+    playerDataArray: [
+      { playerName: 'alice', activeDieArray: [{ recipe: 'z(8)', sides: 8, value: 3, skillArray: ['Speed'] }] },
+      { playerName: 'bob', activeDieArray: [{ recipe: 6, value: 4 }] },
+    ],
+    gameActionLog: [{
+      timestamp: 1,
+      player: 'alice',
+      message: 'alice performed Skill attack using [z(8):2] against [(6):4]; Defender (6) was captured; Attacker z(8) rerolled 2 => 3',
+    }],
+  }, { step: '0' });
+  const linkedElements = allElements(linkedRoot);
+  assert.match(linkedElements.find((element) => element.className === 'small text-body-secondary mb-1').textContent, /Skill attack/);
+  assert.equal(linkedElements.find((element) => element.textContent === 'Take action on buttonweavers.com').hidden, true);
+  assert.equal(linkedElements.find((element) => element.textContent === 'Link to this step').href, '#game?gameId=22&step=0');
+
+  const invalidRoot = document.createElement('main');
+  renderGameView(invalidRoot, {
+    gameId: 22,
+    playerDataArray: [{ playerName: 'alice' }, { playerName: 'bob' }],
+    gameActionLog: [],
+  }, { step: '8' });
+  assert.match(allElements(invalidRoot).find((element) => element.className === 'small text-body-secondary mb-1').textContent, /step not found/);
 });
 
 test('web-ui: Reach game search - one search link and nav wiring reach the search view', () => {

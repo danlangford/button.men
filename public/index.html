@@ -84,6 +84,13 @@
     }
     .game-die-captured { opacity: .45; filter: grayscale(1); }
     .game-die-captured .game-die-value { text-decoration: line-through; }
+    .game-die-replay-attacker { border: 3px solid #a64b00 !important; }
+    .game-die-replay-target { border: 3px dashed #006b84 !important; }
+    .game-die-replay-changed { border: 3px double #776000 !important; }
+    .game-die-replay-label { display: block; margin-bottom: .25rem; }
+    .game-die-replay-attacker .game-die-replay-label { color: #fff; background: #a64b00; }
+    .game-die-replay-target .game-die-replay-label { color: #fff; background: #006b84; }
+    .game-die-replay-changed .game-die-replay-label { color: #fff; background: #776000; }
     @media (max-width: 575.98px) {
       main { min-width: 0; overflow-wrap: anywhere; }
       .navbar-controls {

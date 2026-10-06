@@ -83,3 +83,53 @@ test('mobile orientations keep both HUDs visible outside the dice area', async (
   })));
   expect(overflow.every(({ scrollHeight, clientHeight }) => scrollHeight <= clientHeight + 1)).toBeTruthy();
 });
+
+test('replay links select a step and invalid steps fall back to the current game', async ({ page }) => {
+  const game = {
+    gameId: 22,
+    gameState: 'ACTIVE',
+    currentPlayerIdx: 0,
+    activePlayerIdx: 0,
+    playerDataArray: [
+      { playerName: 'alice', activeDieArray: [{ recipe: 'z(8)', sides: 8, value: 3, skillArray: ['Speed'] }] },
+      { playerName: 'bob', activeDieArray: [{ recipe: 6, value: 4 }] },
+    ],
+    gameActionLog: [{
+      timestamp: 1,
+      player: 'alice',
+      message: 'alice performed Skill attack using [z(8):2] against [(6):4]; Defender (6) was captured; Attacker z(8) rerolled 2 => 3',
+    }],
+  };
+  await page.route('**/js/dice-scene.js', (route) => route.fulfill({
+    contentType: 'text/javascript',
+    body: 'export function renderDiceScene() { return { dispose() {}, setBottomPlayerIndex() {} }; }',
+  }));
+  await page.route('**/api/responder', async (route) => {
+    const request = JSON.parse(route.request().postData());
+    const response = request.type === 'loadPlayerName'
+      ? { status: 'ok', data: { userName: 'alice' } }
+      : request.type === 'loadGameData'
+        ? { status: 'ok', data: game }
+        : { status: 'failed', message: 'Unexpected API request.' };
+    await route.fulfill({ json: response });
+  });
+
+  await page.goto('/#game?gameId=22&step=0');
+  await expect(page.getByText('History · alice used Skill attack against bob')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Take action on buttonweavers.com' })).toBeHidden();
+  await expect(page.getByRole('link', { name: 'Link to this step' })).toHaveAttribute('href', '#game?gameId=22&step=0');
+  await expect(page.locator('.game-3d-hud .game-hud-pill').filter({ hasText: 'Attacker' })).toBeVisible();
+  await page.getByRole('button', { name: 'Show flat game state' }).click();
+  await expect(page.locator('.game-die-replay-attacker')).toBeVisible();
+  await expect(page.locator('.game-die-replay-target')).toBeVisible();
+  await page.getByRole('button', { name: 'Show 3D game view' }).click();
+  await page.getByRole('button', { name: 'Next step' }).click();
+  await expect(page).toHaveURL(/#game\?gameId=22&step=1$/);
+
+  await page.goto('/#game?gameId=22&step=8');
+  await expect(page.getByText('Replay step not found; showing the current game state.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Take action on buttonweavers.com' })).toBeVisible();
+
+  await page.goto('/#game?gameId=22');
+  await expect(page.getByText('Current game state.')).toBeVisible();
+});

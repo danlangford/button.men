@@ -35,9 +35,17 @@ function dieLabel(die) {
 
 function renderDie(document, die, captured = false) {
   const info = dieLabel(die);
-  const card = text(document, 'div', '', `game-die card p-2 text-center${captured ? ' game-die-captured' : ''}`);
+  const role = die.replayRole;
+  const roleLabel = { attacker: 'Attacker', target: 'Target', changed: 'Changed' }[role];
+  const card = text(
+    document,
+    'div',
+    '',
+    `game-die card p-2 text-center${captured ? ' game-die-captured' : ''}${roleLabel ? ` game-die-replay-${role}` : ''}`,
+  );
   if (card.dataset) card.dataset.recipe = info.recipe;
   if (captured) card.setAttribute('aria-disabled', 'true');
+  if (roleLabel) card.append(text(document, 'span', roleLabel, 'game-die-replay-label badge'));
   card.append(
     text(document, 'strong', info.rolled ?? '—', 'game-die-value d-block'),
     text(document, 'span', `d${info.sides || info.recipe}`, 'small'),
@@ -60,7 +68,9 @@ function playerScoreText(player, maxWins) {
 
 function hudDieText(die) {
   const info = dieLabel(die);
+  const role = { attacker: 'Attacker', target: 'Target', changed: 'Changed' }[die.replayRole];
   return [
+    role,
     `${info.rolled ?? '—'}·d${info.sides || info.recipe}`,
     info.skills && `Skills: ${info.skills}`,
     info.statuses && `Status: ${info.statuses}`,
@@ -319,7 +329,10 @@ export function renderGameView(root, data, replayOptions = {}) {
     next.disabled = stepIndex === currentStepIndex;
     returnToCurrent.hidden = !isHistory;
     if (isHistory) {
-      replayStatus.textContent = `History · ${step.type === 'attack' ? `${step.attackType} attack` : 'Attack result'} · step ${stepIndex + 1} of ${currentStepIndex}`;
+      const attackText = step.type === 'attack'
+        ? `${step.player} used ${step.attackType} attack against ${step.players[step.targetIndex].playerName}`
+        : 'Attack result';
+      replayStatus.textContent = `History · ${attackText} · step ${stepIndex + 1} of ${currentStepIndex}`;
     } else if (!invalidStep) {
       replayStatus.textContent = 'Current game state.';
     }

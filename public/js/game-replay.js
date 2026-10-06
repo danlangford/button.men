@@ -103,7 +103,7 @@ function findDice(player, parsedDice, includeCaptured = true) {
   return parsedDice.map((parsed) => {
     const groups = [player.activeDieArray, ...(includeCaptured ? [player.capturedDieArray] : [])];
     for (const group of groups) {
-      const index = group.findIndex((die, dieIndex) => !used.has(die) && dieMatches(die, parsed));
+      const index = group.findIndex((die) => !used.has(die) && dieMatches(die, parsed));
       if (index !== -1) {
         const die = group[index];
         used.add(die);
@@ -164,7 +164,7 @@ export function buildReplaySteps(actionLog, currentPlayers) {
 
   let state = clonePlayers(currentPlayers);
   const reversedSteps = [];
-  for (const entry of entries.toReversed()) {
+  for (const entry of entries.slice().reverse()) {
     const playerIndex = state.findIndex((player) => player.playerName === entry.player);
     if (playerIndex < 0) continue;
     const targetIndex = state.findIndex((_, index) => index !== playerIndex);

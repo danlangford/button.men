@@ -32,10 +32,17 @@ function dieLabel(die, size) {
   canvas.width = 256;
   canvas.height = 128;
   const context = canvas.getContext('2d');
+  const replayRole = { attacker: 'ATTACKER', target: 'TARGET', changed: 'CHANGED' }[die.replayRole];
   context.fillStyle = die.justCaptured ? 'rgba(180, 185, 187, 0.96)' : 'rgba(255, 255, 255, 0.96)';
   context.beginPath();
   context.roundRect(8, 8, 240, 112, 20);
   context.fill();
+  if (replayRole) {
+    context.fillStyle = '#6b3511';
+    context.textAlign = 'center';
+    context.font = 'bold 22px sans-serif';
+    context.fillText(replayRole, 128, 34);
+  }
   context.fillStyle = die.justCaptured ? '#50575a' : '#16212a';
   context.textAlign = 'center';
   context.font = 'bold 68px sans-serif';
@@ -60,10 +67,11 @@ function dieLabel(die, size) {
 
 function makeDie(die, color) {
   const size = sides(die);
+  const roleColors = { attacker: '#ff9f43', target: '#61d4ee', changed: '#f5df58' };
   const mesh = new THREE.Mesh(
     geometryFor(size),
     new THREE.MeshStandardMaterial({
-      color: die.justCaptured ? '#737b7d' : color,
+      color: die.justCaptured ? '#737b7d' : roleColors[die.replayRole] || color,
       roughness: 0.3,
       metalness: 0.12,
     }),
