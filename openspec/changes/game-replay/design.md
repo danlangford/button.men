@@ -8,6 +8,12 @@ current game data and human-readable log entries; it does not return historical
 board snapshots. `BMGameAction::friendly_message_attack` formats attack
 messages from `preAttackDice` and `postAttackDice`, including the pre-attack
 attacker and defender notation and post-attack captures and rerolls.
+Upstream source references: `src/engine/BMInterface.php::load_api_game_data`,
+`src/engine/BMInterfaceGameAction.php::load_game_action_log`,
+`src/engine/BMGameAction.php::friendly_message_attack`,
+`src/engine/BMGameAction.php::messageAttacker` /
+`messageDefender`, and
+`src/engine/BMSkill.php::skill_name_abbreviation_mapping` (`z` is Speed).
 
 ## Goals / Non-Goals
 

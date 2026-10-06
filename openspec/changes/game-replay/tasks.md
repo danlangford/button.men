@@ -13,4 +13,4 @@
 
 ## 3. Integration validation
 
-- [ ] 3.1 Run OpenSpec strict validation, lint, unit tests, and browser tests; resolve regressions and verify the final diff is limited to replay.
+- [x] 3.1 Run OpenSpec strict validation, lint, unit tests, and browser tests; resolve regressions and verify the final diff is limited to replay.
