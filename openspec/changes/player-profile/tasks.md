@@ -17,7 +17,7 @@
 
 ## 4. Integration
 
-- [ ] 4.1 Verify the narrow-screen profile layout and run the full project test, lint, build, and strict OpenSpec validation commands.
+- [x] 4.1 Verify the narrow-screen profile layout and run the full project test, lint, build, and strict OpenSpec validation commands.
 
 ## Workflow follow-up
 

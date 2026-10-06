@@ -126,6 +126,10 @@ test('web-ui: Narrow screen - pages are responsive', () => {
   assert.match(html, /class="navbar-controls d-flex flex-wrap align-items-center gap-2 ms-auto"/);
   assert.match(html, /class="navbar-player text-body-secondary"/);
   assert.match(html, /main \{ min-width: 0; overflow-wrap: anywhere; \}/);
+  assert.match(html, /id="profile-view"/);
+  const profile = read('public/js/profile.js');
+  assert.match(profile, /col-12 col-lg-8/);
+  assert.match(profile, /form-control/);
 });
 
 test('web-ui: Device in dark mode - auto follows the device', () => {
