@@ -11,7 +11,11 @@ import {
   forumThread,
   login,
   logout,
+  playerPreferences,
+  playerProfile,
+  recentPlayerGames,
   searchGameHistory,
+  savePlayerInfo,
 } from '../public/js/api.js';
 import { gameList, gameUrl, gameViewUrl } from '../public/js/games.js';
 import { renderGameView } from '../public/js/game-view.js';
@@ -583,6 +587,68 @@ test('web-ui: Search reads - request the sort, page and given filters', async ()
   await assert.rejects(
     searchGameHistory({}, async () => ({ status: 'failed', message: 'Game search failed.' })),
     /Game search failed\./,
+  );
+});
+
+test('web-ui: Profile API - loads public profiles, handles missing players and reports errors', async () => {
+  const profile = { name_ingame: 'alice', email: null, n_games_won: 5 };
+  let request;
+  assert.deepEqual(await playerProfile('alice', async (args) => {
+    request = args;
+    return { status: 'ok', data: { profile_info: profile } };
+  }), profile);
+  assert.deepEqual(request, { type: 'loadProfileInfo', playerName: 'alice' });
+  assert.equal(await playerProfile('nobody', async () => ({
+    status: 'failed', message: 'Player name does not exist.',
+  })), null);
+  await assert.rejects(
+    playerProfile('alice', async () => ({ status: 'failed', message: 'Profile unavailable.' })),
+    /Profile unavailable\./,
+  );
+});
+
+test('web-ui: Preference API - loads private preferences and submits saves with upstream messages', async () => {
+  const prefs = { email: 'alice@example.test', autoaccept: true };
+  let request;
+  assert.deepEqual(await playerPreferences(async (args) => {
+    request = args;
+    return { status: 'ok', data: { user_prefs: prefs } };
+  }), prefs);
+  assert.deepEqual(request, { type: 'loadPlayerInfo' });
+  await assert.rejects(
+    playerPreferences(async () => ({ status: 'failed', message: 'Login required.' })),
+    /Login required\./,
+  );
+
+  assert.deepEqual(await savePlayerInfo({ name_irl: 'Alice' }, async (args) => {
+    request = args;
+    return { status: 'ok', message: 'Saved.' };
+  }), { ok: true, message: 'Saved.' });
+  assert.deepEqual(request, { type: 'savePlayerInfo', name_irl: 'Alice' });
+  assert.deepEqual(await savePlayerInfo({}, async () => ({
+    status: 'failed', message: 'Current password is incorrect.',
+  })), { ok: false, message: 'Current password is incorrect.' });
+});
+
+test('web-ui: Recent profile games - search completed games newest first', async () => {
+  const games = [{ gameId: 12 }, { gameId: 9 }];
+  let request;
+  assert.deepEqual(await recentPlayerGames('alice', async (args) => {
+    request = args;
+    return { status: 'ok', data: { games } };
+  }), games);
+  assert.deepEqual(request, {
+    type: 'searchGameHistory',
+    playerNameA: 'alice',
+    status: 'COMPLETE',
+    sortColumn: 'lastMove',
+    sortDirection: 'DESC',
+    numberOfResults: 5,
+    page: 1,
+  });
+  await assert.rejects(
+    recentPlayerGames('alice', async () => ({ status: 'failed', message: 'History unavailable.' })),
+    /History unavailable\./,
   );
 });
 
