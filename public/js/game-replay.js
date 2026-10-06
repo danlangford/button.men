@@ -158,15 +158,29 @@ export function buildReplaySteps(actionLog, currentPlayers) {
       originalIndex: index,
       attack: parseAttackMessage(entry.message),
     }))
-    .filter((entry) => entry.attack)
     .sort((first, second) => (Number(first.timestamp) || 0) - (Number(second.timestamp) || 0) ||
       first.originalIndex - second.originalIndex);
 
   let state = clonePlayers(currentPlayers);
   const reversedSteps = [];
+  const addEventStep = (entry) => reversedSteps.push({
+    type: 'event',
+    player: entry.player,
+    message: entry.message,
+    timestamp: entry.timestamp,
+    logIndex: entry.originalIndex,
+    players: clonePlayers(state),
+  });
   for (const entry of entries.slice().reverse()) {
+    if (!entry.attack) {
+      addEventStep(entry);
+      continue;
+    }
     const playerIndex = state.findIndex((player) => player.playerName === entry.player);
-    if (playerIndex < 0) continue;
+    if (playerIndex < 0) {
+      addEventStep(entry);
+      continue;
+    }
     const targetIndex = state.findIndex((_, index) => index !== playerIndex);
     if (targetIndex < 0) continue;
 
@@ -178,6 +192,7 @@ export function buildReplaySteps(actionLog, currentPlayers) {
       player: entry.player,
       message: entry.message,
       timestamp: entry.timestamp,
+      logIndex: entry.originalIndex,
       players: afterPlayers,
     });
 
@@ -194,6 +209,7 @@ export function buildReplaySteps(actionLog, currentPlayers) {
       attackType: entry.attack.attackType,
       message: entry.message,
       timestamp: entry.timestamp,
+      logIndex: entry.originalIndex,
       players: beforePlayers,
     });
     state = beforePlayers;

@@ -79,6 +79,9 @@ function makeDie(die, color) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.rotation.set(0.25, 0.4, 0.2);
+  mesh.userData.replayRole = die.replayRole;
+  if (die.replayRole === 'attacker') mesh.scale.setScalar(1.22);
+  if (die.replayRole === 'target') mesh.scale.setScalar(1.14);
   mesh.add(dieLabel(die, size));
   return mesh;
 }
@@ -149,6 +152,28 @@ export function renderDiceScene(container, players, bottomPlayerIndex) {
     scene.add(group);
     return group;
   });
+  const replayArrows = [];
+  const attackers = diceGroups.flatMap((group) =>
+    group.children.filter((mesh) => mesh.userData.replayRole === 'attacker'));
+  const targets = diceGroups.flatMap((group) =>
+    group.children.filter((mesh) => mesh.userData.replayRole === 'target'));
+  for (const attacker of attackers) {
+    for (const target of targets) {
+      const arrow = new THREE.ArrowHelper(
+        new THREE.Vector3(0, 0, 1),
+        new THREE.Vector3(),
+        1,
+        '#ffe07a',
+        0.42,
+        0.24,
+      );
+      arrow.line.material.depthTest = false;
+      arrow.cone.material.depthTest = false;
+      arrow.renderOrder = 2;
+      scene.add(arrow);
+      replayArrows.push({ arrow, attacker, target });
+    }
+  }
 
   const bounds = new THREE.Box3();
   const center = new THREE.Vector3();
@@ -178,6 +203,16 @@ export function renderDiceScene(container, players, bottomPlayerIndex) {
   const positionPlayers = (bottom) => {
     diceGroups.forEach((group, index) => {
       group.position.z = index === bottom ? 2.85 : -2.85;
+    });
+    replayArrows.forEach(({ arrow, attacker, target }) => {
+      const from = attacker.getWorldPosition(new THREE.Vector3());
+      const to = target.getWorldPosition(new THREE.Vector3());
+      const direction = to.sub(from);
+      const distance = direction.length();
+      direction.normalize();
+      arrow.position.copy(from).addScaledVector(direction, 0.78);
+      arrow.setDirection(direction);
+      arrow.setLength(Math.max(distance - 1.65, 0.1), 0.42, 0.24);
     });
     fitCamera();
   };

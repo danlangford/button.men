@@ -10,6 +10,7 @@
 - [x] 2.1 Add replay controls, separate attack/result steps, past-state read-only indication, and current-state return; verify boundaries and controls with UI tests.
 - [x] 2.2 Mark attackers and targets in both flat and 3D views and show the best-effort limitation; verify markers are textually distinct and current rendering remains intact.
 - [x] 2.3 Add hash-step deep links, invalid-step fallback notice, and current-state default; verify valid, invalid, and missing step routing.
+- [x] 2.4 Emphasize attack participants and direction, include non-chat action entries, and highlight the selected game-log row; verify each in focused UI tests.
 
 ## 3. Integration validation
 

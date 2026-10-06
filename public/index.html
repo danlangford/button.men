@@ -88,9 +88,20 @@
     .game-die-replay-target { border: 3px dashed #006b84 !important; }
     .game-die-replay-changed { border: 3px double #776000 !important; }
     .game-die-replay-label { display: block; margin-bottom: .25rem; }
+    .game-die-replay-attacker, .game-die-replay-target { position: relative; z-index: 1; transform: scale(1.08); }
     .game-die-replay-attacker .game-die-replay-label { color: #fff; background: #a64b00; }
     .game-die-replay-target .game-die-replay-label { color: #fff; background: #006b84; }
     .game-die-replay-changed .game-die-replay-label { color: #fff; background: #776000; }
+    .game-replay-attack-direction {
+      width: fit-content;
+      padding: .2rem .55rem;
+      border: 1px solid #806600;
+      border-radius: .25rem;
+      background: #fff3cd;
+      color: #352b00;
+      font-weight: 700;
+    }
+    .game-event-current-step { border-left: .35rem solid #806600; background: #fff3cd; font-weight: 600; }
     @media (max-width: 575.98px) {
       main { min-width: 0; overflow-wrap: anywhere; }
       .navbar-controls {

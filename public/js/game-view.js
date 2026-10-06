@@ -147,13 +147,25 @@ function renderActivity(document, root, data, privateChat) {
   const controls = text(document, 'div', '', 'btn-group mb-3');
   const stream = text(document, 'div', '', 'game-activity');
   const entries = [...entry(data.gameActionLog, 'action'), ...entry(data.gameChatLog, 'chat')]
+    .map((item, index) => ({ ...item, logIndex: item.type === 'action' ? index : null }))
     .sort((a, b) => b.timestamp - a.timestamp);
   let filter = 'chat';
+  let selectedLogIndex = null;
   const render = () => {
     stream.replaceChildren();
-    const visible = entries.filter((item) => filter === 'all' || item.type === filter);
+    const visible = entries.filter((item) =>
+      (item.type === 'action' && item.logIndex === selectedLogIndex) ||
+      filter === 'all' ||
+      item.type === filter);
     visible.forEach((item) => {
-      const row = text(document, 'article', '', `game-event game-event-${item.type} border-bottom py-2`);
+      const selected = item.type === 'action' && item.logIndex === selectedLogIndex;
+      const row = text(
+        document,
+        'article',
+        '',
+        `game-event game-event-${item.type} border-bottom py-2${selected ? ' game-event-current-step' : ''}`,
+      );
+      if (item.type === 'action') row.setAttribute('aria-current', selected ? 'step' : 'false');
       const author = text(document, item.player ? 'a' : 'strong', item.player || (item.type === 'chat' ? 'Chat' : 'Game'));
       if (item.player) author.href = profileUrl(item.player);
       row.append(author, text(document, 'span', ` · ${item.message}`));
@@ -177,6 +189,16 @@ function renderActivity(document, root, data, privateChat) {
   if (privateChat) root.append(text(document, 'p', 'Private chat is hidden for spectators.', 'alert alert-secondary'));
   render();
   root.append(stream);
+  return (logIndex) => {
+    selectedLogIndex = logIndex ?? null;
+    if (selectedLogIndex !== null && filter === 'chat') {
+      filter = 'all';
+      [...controls.children].forEach((child) => {
+        child.className = `btn btn-sm ${child.textContent === 'Chat & Game Log' ? 'btn-primary' : 'btn-outline-primary'}`;
+      });
+    }
+    render();
+  };
 }
 
 export function renderGameView(root, data, replayOptions = {}) {
@@ -244,6 +266,8 @@ export function renderGameView(root, data, replayOptions = {}) {
   const stepLink = text(document, 'a', 'Link to this step', 'btn btn-sm btn-link');
   replayControls.append(previous, next, returnToCurrent, stepLink);
   const replayStatus = text(document, 'p', '', 'small text-body-secondary mb-1');
+  const attackDirection = text(document, 'p', 'Attack direction: attackers → targets.', 'game-replay-attack-direction');
+  attackDirection.hidden = true;
   const replayNotice = text(
     document,
     'p',
@@ -258,8 +282,10 @@ export function renderGameView(root, data, replayOptions = {}) {
     text(document, 'p', `${data.gameState || 'Game'} · Round ${data.roundNumber ?? '—'}`, 'text-body-secondary'),
     replayControls,
     replayStatus,
+    attackDirection,
     replayNotice,
   );
+  let highlightActivity = () => {};
   function playerAt(slot) {
     const bottomPlayer = flipped ? 1 - viewing : viewing;
     const index = slot === 0 ? bottomPlayer : 1 - bottomPlayer;
@@ -321,6 +347,7 @@ export function renderGameView(root, data, replayOptions = {}) {
     stepIndex = nextStepIndex;
     const step = replaySteps[stepIndex];
     viewPlayers = step.players;
+    highlightActivity(step.logIndex);
     renderBoard();
     renderScene();
     const isHistory = step.type !== 'current';
@@ -331,10 +358,14 @@ export function renderGameView(root, data, replayOptions = {}) {
     if (isHistory) {
       const attackText = step.type === 'attack'
         ? `${step.player} used ${step.attackType} attack against ${step.players[step.targetIndex].playerName}`
-        : 'Attack result';
+        : step.type === 'result'
+          ? 'Attack result'
+          : step.message;
       replayStatus.textContent = `History · ${attackText} · step ${stepIndex + 1} of ${currentStepIndex}`;
+      attackDirection.hidden = step.type !== 'attack';
     } else if (!invalidStep) {
       replayStatus.textContent = 'Current game state.';
+      attackDirection.hidden = true;
     }
     stepLink.href = `#game?gameId=${encodeURIComponent(data.gameId)}&step=${stepIndex}`;
     if (updateHash && document.defaultView?.history?.replaceState) {
@@ -354,5 +385,6 @@ export function renderGameView(root, data, replayOptions = {}) {
   returnToCurrent.addEventListener('click', () => updateStep(currentStepIndex));
   updateStep(stepIndex, false);
   const privateChat = current === null && players.some((player) => player.isChatPrivate);
-  renderActivity(document, root, data, privateChat);
+  highlightActivity = renderActivity(document, root, data, privateChat);
+  highlightActivity(replaySteps[stepIndex].logIndex);
 }

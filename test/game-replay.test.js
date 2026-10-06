@@ -69,7 +69,7 @@ test('game replay parser reconstructs attack and result steps and preserves curr
     },
   ], currentPlayers);
 
-  assert.deepEqual(steps.map((step) => step.type), ['attack', 'result', 'attack', 'result', 'current']);
+  assert.deepEqual(steps.map((step) => step.type), ['attack', 'result', 'event', 'attack', 'result', 'current']);
   assert.equal(steps[0].attackType, 'Skill');
   assert.equal(steps[0].players[0].activeDieArray[0].value, 2);
   assert.equal(steps[0].players[0].activeDieArray[0].replayRole, 'attacker');
@@ -77,10 +77,30 @@ test('game replay parser reconstructs attack and result steps and preserves curr
   assert.equal(steps[0].players[1].activeDieArray[1].replayRole, 'target');
   assert.equal(steps[1].players[0].activeDieArray[0].value, 3);
   assert.equal(steps[1].players[0].activeDieArray[0].replayRole, 'changed');
-  assert.equal(steps[2].attackType, 'Power');
-  assert.equal(steps[2].players[1].activeDieArray[0].value, 4);
-  assert.equal(steps[2].players[0].activeDieArray[0].value, 3);
-  assert.equal(steps[3].players[1].activeDieArray[0].value, 5);
-  assert.equal(steps[4].players, currentPlayers);
+  assert.equal(steps[2].message, 'alice passed');
+  assert.equal(steps[3].attackType, 'Power');
+  assert.equal(steps[3].players[1].activeDieArray[0].value, 4);
+  assert.equal(steps[3].players[0].activeDieArray[0].value, 3);
+  assert.equal(steps[4].players[1].activeDieArray[0].value, 5);
+  assert.equal(steps[5].players, currentPlayers);
   assert.equal(currentPlayers[0].activeDieArray[0].replayRole, undefined);
+});
+
+test('game replay keeps pass and option-selection log entries as steps', () => {
+  const players = [
+    { playerName: 'alice', activeDieArray: [{ recipe: 6, value: 3 }] },
+    { playerName: 'bob', activeDieArray: [{ recipe: 8, value: 4 }] },
+  ];
+  const steps = buildReplaySteps([
+    { timestamp: 1, player: 'alice', message: 'alice performed Skill attack using [(6):3] against [(8):4]' },
+    { timestamp: 2, player: 'bob', message: 'bob passed' },
+    { timestamp: 3, player: 'alice', message: 'alice set swing values: V=6' },
+  ], players);
+
+  assert.deepEqual(steps.map((step) => step.type), ['attack', 'result', 'event', 'event', 'current']);
+  assert.equal(steps[2].message, 'bob passed');
+  assert.equal(steps[2].logIndex, 1);
+  assert.equal(steps[3].message, 'alice set swing values: V=6');
+  assert.equal(steps[3].logIndex, 2);
+  assert.equal(steps[4].players, players);
 });

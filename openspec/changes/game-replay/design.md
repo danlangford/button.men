@@ -48,23 +48,25 @@ Upstream source references: `src/engine/BMInterface.php::load_api_game_data`,
   recipe size, and recipe skill prefixes are retained as notation. For example,
   `z(8):3` is an 8-sided die showing 3 and `V=6:3` is a 6-sided V swing showing
   3. Unknown fields are inherited from a matching current die when possible.
-- **Use all attack entries returned by the API, in timestamp order.** The API
-  may limit logs, and not every game-log item changes dice. Replay uses
-  parseable attack entries only, inserts separate attack and resulting-state
-  steps, and always appends the exact current state. Non-attack entries remain
-  available in the activity log but do not become board steps.
+- **Use all action-log entries returned by the API, in timestamp order.** Replay
+  omits chat, gives each non-attack action entry (including passes and option
+  selection) a best-effort event step, inserts separate attack and result steps,
+  and always appends the exact current state. A non-attack event retains the
+  nearest reconstructed board because the public log does not provide snapshots.
 - **Reuse the existing game screen and 3D/flat switch.** Add replay controls,
-  non-colour attacker/target badges, and a history notice to the existing
-  game-view renderer; both renderers consume the same selected snapshot and
-  marker metadata. No new dependency or server component is needed.
+  non-colour attacker/target labels and emphasis, a 3D directional arrow and a
+  flat-view direction label, selected action-log row highlighting, and a
+  history notice to the existing game-view renderer. Both renderers consume
+  the same selected snapshot and marker metadata. No new dependency or server
+  component is needed.
 - **Address proposal suggestions.** Keep replay inside the game screen
   (adopted); preserve separate attack/result steps (adopted); use the existing
   hash-query route with a numeric step index (adopted); visibly mark attackers
-  and targets with text/borders as well as color (adapted); use upstream log
-  prose for best-effort reconstruction rather than adding API snapshots
-  (adapted per the developer's direction). Replay covers the action-log entries
-  returned by the API; chat and non-attack entries do not create board steps.
-  The existing view already provides both 3D and flat modes.
+  and targets with text/borders as well as color and show their direction
+  (adapted); use upstream log prose for best-effort reconstruction rather than
+  adding API snapshots (adapted per the developer's direction). Replay covers
+  all action-log entries returned by the API, while chat is excluded. The
+  existing view already provides both 3D and flat modes.
 
 ## Risks / Trade-offs
 

@@ -98,6 +98,14 @@ test('replay links select a step and invalid steps fall back to the current game
       timestamp: 1,
       player: 'alice',
       message: 'alice performed Skill attack using [z(8):2] against [(6):4]; Defender (6) was captured; Attacker z(8) rerolled 2 => 3',
+    }, {
+      timestamp: 2,
+      player: 'bob',
+      message: 'bob passed',
+    }, {
+      timestamp: 3,
+      player: 'alice',
+      message: 'alice set swing values: V=6',
     }],
   };
   await page.route('**/js/dice-scene.js', (route) => route.fulfill({
@@ -119,6 +127,12 @@ test('replay links select a step and invalid steps fall back to the current game
   await expect(page.getByRole('link', { name: 'Take action on buttonweavers.com' })).toBeHidden();
   await expect(page.getByRole('link', { name: 'Link to this step' })).toHaveAttribute('href', '#game?gameId=22&step=0');
   await expect(page.locator('.game-3d-hud .game-hud-pill').filter({ hasText: 'Attacker' })).toBeVisible();
+  await expect(page.getByText('Attack direction: attackers → targets.')).toBeVisible();
+  await expect(page.locator('.game-event-current-step')).toContainText('alice performed Skill attack');
+  await expect(page.getByText('bob passed')).toBeVisible();
+  await expect(page.getByText('alice set swing values: V=6')).toBeVisible();
+  await page.getByRole('button', { name: 'Chat', exact: true }).click();
+  await expect(page.locator('.game-event-current-step')).toContainText('alice performed Skill attack');
   await page.getByRole('button', { name: 'Show flat game state' }).click();
   await expect(page.locator('.game-die-replay-attacker')).toBeVisible();
   await expect(page.locator('.game-die-replay-target')).toBeVisible();
