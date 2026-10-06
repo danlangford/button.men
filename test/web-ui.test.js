@@ -19,6 +19,7 @@ import {
 } from '../public/js/api.js';
 import { gameList, gameUrl, gameViewUrl } from '../public/js/games.js';
 import { renderGameView } from '../public/js/game-view.js';
+import { buildPreferenceSaveArgs, profileUrl, renderProfile } from '../public/js/profile.js';
 import {
   buttonweaversThreadUrl,
   forumThreadUrl,
@@ -650,6 +651,148 @@ test('web-ui: Recent profile games - search completed games newest first', async
     recentPlayerGames('alice', async () => ({ status: 'failed', message: 'History unavailable.' })),
     /History unavailable\./,
   );
+});
+
+test('web-ui: Public profile - shows public fields, statistics and linked recent games safely', () => {
+  const document = fakeDocument();
+  const container = document.createElement('main');
+  const unsafeComment = '<img src=x onerror=alert(1)>';
+  renderProfile(container, {
+    name_ingame: 'alice',
+    name_irl: 'Alice',
+    email: null,
+    comment: unsafeComment,
+    n_games_won: 4,
+    n_games_lost: 2,
+  }, {
+    games: [{
+      gameId: 22,
+      playerNameA: 'alice',
+      playerNameB: 'bob',
+      status: 'COMPLETE',
+      lastMove: 1760000000,
+    }],
+  });
+  assert.match(container.textContent, /Alice/);
+  assert.match(container.textContent, /4 wins · 2 losses/);
+  assert.match(container.textContent, new RegExp(unsafeComment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal(allElements(container).some((element) => element.tagName === 'img' && element.textContent === unsafeComment), false);
+  assert.equal(container.textContent.includes('alice@example.test'), false);
+  const links = allElements(container).filter((element) => element.tagName === 'a');
+  assert.ok(links.some((element) => element.textContent === 'Game 22' && element.href === '#game?gameId=22'));
+  assert.ok(links.some((element) => element.textContent === 'bob' && element.href === profileUrl('bob')));
+});
+
+test('web-ui: Own profile - shows preferences privately and reports missing players or games', () => {
+  const document = fakeDocument();
+  const container = document.createElement('main');
+  const preferences = {
+    email: 'alice@example.test',
+    name_irl: 'Alice',
+    dob_month: 1,
+    dob_day: 2,
+    is_email_public: false,
+    pronouns: 'she/her',
+    uses_gravatar: true,
+    image_size: 100,
+    favorite_button: 'Avis',
+    favorite_buttonset: 'Classic',
+    homepage: 'https://example.test',
+    comment: 'Hello',
+    vacation_message: '',
+    autoaccept: true,
+    autopass: false,
+    fire_overshooting: false,
+    monitor_redirects_to_game: true,
+    monitor_redirects_to_forum: false,
+    automatically_monitor: false,
+    player_color: '#dd99dd',
+    opponent_color: '#ddffdd',
+    neutral_color_a: '#cccccc',
+    neutral_color_b: '#dddddd',
+    die_background: 'circle',
+  };
+  renderProfile(container, {
+    name_ingame: 'alice',
+    email: null,
+    uses_gravatar: true,
+    email_hash: '0123456789abcdef0123456789abcdef',
+    image_size: 100,
+  }, {
+    isOwn: true,
+    preferences,
+  });
+  assert.match(container.textContent, /Preferences/);
+  assert.equal(
+    allElements(container).find((element) => element.tagName === 'input' && element.name === 'email')?.value,
+    'alice@example.test',
+  );
+  assert.equal(
+    allElements(container).find((element) => element.tagName === 'img')?.src,
+    'https://www.gravatar.com/avatar/0123456789abcdef0123456789abcdef?s=100',
+  );
+
+  const other = document.createElement('main');
+  renderProfile(other, { name_ingame: 'bob', email: null }, { preferences });
+  assert.doesNotMatch(other.textContent, /Preferences/);
+  assert.equal(allElements(other).some((element) => element.value === 'alice@example.test'), false);
+  assert.match(other.textContent, /No completed games\./);
+
+  const missing = document.createElement('main');
+  renderProfile(missing, null);
+  assert.equal(missing.textContent, 'Player not found.');
+});
+
+test('web-ui: Saving one preference - retains other fields and sends account changes only when supplied', () => {
+  const preferences = {
+    name_irl: 'Alice',
+    is_email_public: true,
+    dob_month: 4,
+    dob_day: 12,
+    pronouns: 'they/them',
+    comment: 'Existing',
+    homepage: 'https://example.test',
+    autoaccept: true,
+    autopass: false,
+    fire_overshooting: true,
+    monitor_redirects_to_game: true,
+    monitor_redirects_to_forum: false,
+    automatically_monitor: true,
+    die_background: 'circle',
+    player_color: '#dd99dd',
+    opponent_color: '#ddffdd',
+    neutral_color_a: '#cccccc',
+    neutral_color_b: '#dddddd',
+    uses_gravatar: true,
+    vacation_message: 'Away',
+    favorite_button: 'Avis',
+    favorite_buttonset: 'Classic',
+    image_size: 120,
+  };
+  const args = buildPreferenceSaveArgs(preferences, { name_irl: 'Alice Example' });
+  assert.equal(args.name_irl, 'Alice Example');
+  assert.equal(args.comment, 'Existing');
+  assert.equal(args.autoaccept, true);
+  assert.equal(args.player_color, '#dd99dd');
+  assert.equal(args.favorite_button, 'Avis');
+  assert.equal(args.image_size, 120);
+  assert.equal('current_password' in args, false);
+  assert.equal('new_email' in args, false);
+
+  const accountChange = buildPreferenceSaveArgs(preferences, {
+    current_password: 'secret',
+    new_password: 'new-secret',
+    new_email: 'alice2@example.test',
+    image_size: '',
+    favorite_button: '',
+    favorite_buttonset: '',
+  });
+  assert.equal(accountChange.current_password, 'secret');
+  assert.equal(accountChange.new_password, 'new-secret');
+  assert.equal(accountChange.new_email, 'alice2@example.test');
+  assert.equal('image_size' in accountChange, false);
+  assert.equal('favorite_button' in accountChange, false);
+  assert.equal('favorite_buttonset' in accountChange, false);
 });
 
 test('web-ui: No filters given - submitting always carries sort and page even with blank fields', () => {

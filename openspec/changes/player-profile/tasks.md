@@ -6,8 +6,8 @@
 
 ## 2. Profile screen
 
-- [ ] 2.1 Render public profile fields, profile image, statistics and recent games; verify missing-player, no-games, safe text rendering and profile/game links with renderer tests.
-- [ ] 2.2 Display editable preferences only for the signed-in player; verify preference fields are private to the owner and all specified settings render with focused tests.
+- [x] 2.1 Render public profile fields, profile image, statistics and recent games; verify missing-player, no-games, safe text rendering and profile/game links with renderer tests.
+- [x] 2.2 Display editable preferences only for the signed-in player; verify preference fields are private to the owner and all specified settings render with focused tests.
 - [ ] 2.3 Save preferences by merging form entries into the loaded record, support password/email changes, and surface API messages; verify untouched fields, rejected values and account-change requests with tests.
 
 ## 3. Navigation and usernames
