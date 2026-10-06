@@ -3,7 +3,7 @@
 ## 1. Reusable log parser
 
 - [x] 1.1 Add pure helpers to parse Buttonweavers die notations and attack messages, and verify standard, skill, swing, and malformed notation with unit tests.
-- [ ] 1.2 Reconstruct attack and post-attack snapshots backward from current data, and verify captures, rerolls, actor mapping, skipped entries, and exact final state.
+- [x] 1.2 Reconstruct attack and post-attack snapshots backward from current data, and verify captures, rerolls, actor mapping, skipped entries, and exact final state.
 
 ## 2. Replay game view
 

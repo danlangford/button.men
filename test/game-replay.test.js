@@ -51,11 +51,16 @@ test('game replay parser reconstructs attack and result steps and preserves curr
     },
     {
       playerName: 'bob',
-      activeDieArray: [{ recipe: 10, value: 4 }],
+      activeDieArray: [{ recipe: 10, value: 5 }],
       capturedDieArray: [{ recipe: 6, value: 5, properties: ['WasJustCaptured'] }],
     },
   ];
   const steps = buildReplaySteps([
+    {
+      timestamp: 3,
+      player: 'bob',
+      message: 'bob performed Power attack using [(10):4] against [z(8):3]; Defender z(8) was not captured; Attacker (10) rerolled 4 => 5',
+    },
     { timestamp: 2, player: 'alice', message: 'alice passed' },
     {
       timestamp: 1,
@@ -64,7 +69,7 @@ test('game replay parser reconstructs attack and result steps and preserves curr
     },
   ], currentPlayers);
 
-  assert.deepEqual(steps.map((step) => step.type), ['attack', 'result', 'current']);
+  assert.deepEqual(steps.map((step) => step.type), ['attack', 'result', 'attack', 'result', 'current']);
   assert.equal(steps[0].attackType, 'Skill');
   assert.equal(steps[0].players[0].activeDieArray[0].value, 2);
   assert.equal(steps[0].players[0].activeDieArray[0].replayRole, 'attacker');
@@ -72,6 +77,10 @@ test('game replay parser reconstructs attack and result steps and preserves curr
   assert.equal(steps[0].players[1].activeDieArray[1].replayRole, 'target');
   assert.equal(steps[1].players[0].activeDieArray[0].value, 3);
   assert.equal(steps[1].players[0].activeDieArray[0].replayRole, 'changed');
-  assert.equal(steps[2].players, currentPlayers);
+  assert.equal(steps[2].attackType, 'Power');
+  assert.equal(steps[2].players[1].activeDieArray[0].value, 4);
+  assert.equal(steps[2].players[0].activeDieArray[0].value, 3);
+  assert.equal(steps[3].players[1].activeDieArray[0].value, 5);
+  assert.equal(steps[4].players, currentPlayers);
   assert.equal(currentPlayers[0].activeDieArray[0].replayRole, undefined);
 });
