@@ -1,4 +1,5 @@
 import { gameUrl } from './games.js';
+import { profileUrl } from './links.js';
 
 let disposeDiceScene = () => {};
 let setDiceOrientation = () => {};
@@ -81,8 +82,10 @@ function renderHudPlayer(document, player, active, initiative, position, maxWins
   const header = text(document, 'div', '', 'game-hud-header');
   const title = text(document, 'div', '', 'game-hud-title');
   const titleCopy = text(document, 'div', '', 'game-hud-title-copy');
+  const name = text(document, player.playerName ? 'a' : 'strong', player.playerName || `Player ${position + 1}`, 'game-hud-name');
+  if (player.playerName) name.href = profileUrl(player.playerName);
   titleCopy.append(
-    text(document, 'strong', player.playerName || `Player ${position + 1}`, 'game-hud-name'),
+    name,
     text(document, 'div', `${button.name || 'Unnamed button'}${button.recipe ? ` · ${button.recipe}` : ''}`, 'game-hud-button'),
   );
   title.append(titleCopy);
@@ -102,7 +105,8 @@ function renderHudPlayer(document, player, active, initiative, position, maxWins
 function renderPlayer(document, player, active, initiative, position, maxWins) {
   const button = player.button || {};
   const card = text(document, 'article', '', `game-player card p-3 game-player-${position}`);
-  const heading = text(document, 'h2', player.playerName || `Player ${position + 1}`, 'h3 mb-1');
+  const heading = text(document, player.playerName ? 'a' : 'h2', player.playerName || `Player ${position + 1}`, 'h3 mb-1');
+  if (player.playerName) heading.href = profileUrl(player.playerName);
   card.append(heading);
   card.append(text(document, 'div', button.name || 'Unnamed button', 'fw-semibold'));
   card.append(text(document, 'div', button.recipe ? `Recipe: ${button.recipe}` : '', 'small text-body-secondary'));
@@ -139,7 +143,9 @@ function renderActivity(document, root, data, privateChat) {
     const visible = entries.filter((item) => filter === 'all' || item.type === filter);
     visible.forEach((item) => {
       const row = text(document, 'article', '', `game-event game-event-${item.type} border-bottom py-2`);
-      row.append(text(document, 'strong', item.player || (item.type === 'chat' ? 'Chat' : 'Game')), text(document, 'span', ` · ${item.message}`));
+      const author = text(document, item.player ? 'a' : 'strong', item.player || (item.type === 'chat' ? 'Chat' : 'Game'));
+      if (item.player) author.href = profileUrl(item.player);
+      row.append(author, text(document, 'span', ` · ${item.message}`));
       stream.append(row);
     });
     if (!visible.length) stream.append(text(document, 'p', 'No activity for this filter.', 'text-body-secondary'));

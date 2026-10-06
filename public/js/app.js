@@ -17,6 +17,7 @@ import { gameList } from './games.js';
 import { renderGameView } from './game-view.js';
 import { renderForumBoard, renderForumOverview, renderForumThread } from './forum.js';
 import { renderProfile } from './profile.js';
+import { profileUrl } from './links.js';
 import { applyParamsToForm, paramsFromForm, renderSearchResults, searchArgsFromParams } from './search.js';
 import { initThemeControl } from './theme.js';
 
@@ -63,18 +64,26 @@ function showError(message, retry) {
 }
 
 function gameItem(game) {
-  const item = document.createElement('a');
-  item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-start gap-2';
-  item.href = game.href;
+  const item = document.createElement('div');
+  item.className = 'list-group-item d-flex justify-content-between align-items-start gap-2';
 
   const text = document.createElement('div');
   const title = document.createElement('div');
   title.className = 'fw-semibold';
-  title.textContent = `vs ${game.opponent}`;
+  const gameLink = document.createElement('a');
+  gameLink.href = game.href;
+  gameLink.textContent = `Game ${game.id}`;
+  title.append(gameLink);
+  const opponent = document.createElement('div');
+  opponent.textContent = 'vs ';
+  const opponentLink = document.createElement('a');
+  opponentLink.href = profileUrl(game.opponent);
+  opponentLink.textContent = game.opponent;
+  opponent.append(opponentLink);
   const detail = document.createElement('small');
   detail.className = 'text-body-secondary';
   detail.textContent = `${game.myButton} vs ${game.opponentButton} · ${game.wins}-${game.losses}-${game.draws} (to ${game.target})`;
-  text.append(title, detail);
+  text.append(title, opponent, detail);
   if (game.description) {
     const description = document.createElement('div');
     description.className = 'small text-body-secondary fst-italic';

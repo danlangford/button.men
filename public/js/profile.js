@@ -1,16 +1,13 @@
 import { formatDate } from './search.js';
 import { gameViewUrl } from './games.js';
-
+import { profileUrl } from './links.js';
+export { profileUrl } from './links.js';
 const $ = (document, tag, className = '', text) => {
   const element = document.createElement(tag);
   if (className) element.className = className;
   if (text !== undefined) element.textContent = text;
   return element;
 };
-
-export function profileUrl(playerName) {
-  return `#profile?player=${encodeURIComponent(playerName)}`;
-}
 
 function link(document, label, href, className = '') {
   const element = $(document, 'a', className, label);

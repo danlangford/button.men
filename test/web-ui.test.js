@@ -311,9 +311,11 @@ test('web-ui: Busy board - threads render latest activity first with an unread-p
     ],
   });
   const links = allElements(container).filter((element) => element.tagName === 'a');
-  assert.deepEqual(links.slice(1).map((link) => link.children[0].textContent), ['Latest', 'Older']);
-  assert.equal(links[1].href, forumThreadUrl(2, 37));
-  assert.equal(links[1].textContent.includes('New posts'), true);
+  const threadLinks = links.filter((link) => link.href.startsWith('#!threadId='));
+  assert.deepEqual(threadLinks.map((link) => link.textContent), ['Latest', 'Older']);
+  assert.equal(threadLinks[0].href, forumThreadUrl(2, 37));
+  assert.ok(links.some((link) => link.textContent === 'bob' && link.href === profileUrl('bob')));
+  assert.ok(links.some((link) => link.textContent === 'alice' && link.href === profileUrl('alice')));
 });
 
 test('web-ui: Thread with unread posts - ordered posts render and the page scrolls to the first unread', () => {
@@ -346,9 +348,9 @@ test('web-ui: Thread with unread posts - ordered posts render and the page scrol
   assert.deepEqual(renderedBody.children, []);
   const deletedBody = allElements(posts[0]).find((element) => element.className?.includes('forum-post-body'));
   assert.match(deletedBody.className, /text-body-secondary/);
-  const author = allElements(target).find((element) => element.tagName === 'strong');
+  const author = allElements(target).find((element) => element.tagName === 'a' && element.textContent === 'bob');
   const time = allElements(target).find((element) => element.tagName === 'time');
-  assert.equal(author.textContent, 'bob');
+  assert.equal(author.href, profileUrl('bob'));
   assert.notEqual(time.dateTime, undefined);
 });
 
@@ -519,6 +521,8 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.equal(board.hidden, true);
   assert.match(board.children[0].textContent, /alice/);
   assert.match(board.children[1].textContent, /dan/);
+  assert.ok(allElements(root).some((element) => element.textContent === 'alice' && element.href === profileUrl('alice')));
+  assert.ok(allElements(root).some((element) => element.textContent === 'dan' && element.href === profileUrl('dan')));
   const aliceDice = board.children[0].children.find((element) => element.className?.startsWith('game-dice '));
   assert.equal(aliceDice.children.length, 2);
   const recentlyCaptured = aliceDice.children.find((element) => element.className.includes('game-die-captured'));
@@ -796,6 +800,76 @@ test('web-ui: Saving one preference - retains other fields and sends account cha
   assert.equal('favorite_buttonset' in accountChange, false);
 });
 
+test('web-ui: Rejected preference save - shows the API message and keeps entries until success', async () => {
+  const document = fakeDocument();
+  const container = document.createElement('main');
+  let outcome = { ok: false, message: 'Current password is incorrect.' };
+  let sent;
+  renderProfile(container, { name_ingame: 'alice' }, {
+    isOwn: true,
+    preferences: {
+      name_irl: 'Alice',
+      is_email_public: false,
+      dob_month: 1,
+      dob_day: 2,
+      pronouns: '',
+      uses_gravatar: false,
+      image_size: 100,
+      favorite_button: '',
+      favorite_buttonset: '',
+      homepage: '',
+      comment: '',
+      vacation_message: '',
+      autoaccept: true,
+      autopass: false,
+      monitor_redirects_to_game: false,
+      monitor_redirects_to_forum: false,
+      automatically_monitor: false,
+      fire_overshooting: false,
+      player_color: '#dd99dd',
+      opponent_color: '#ddffdd',
+      neutral_color_a: '#cccccc',
+      neutral_color_b: '#dddddd',
+      die_background: 'circle',
+      email: 'alice@example.test',
+    },
+    onSave: async (args) => {
+      sent = args;
+      return outcome;
+    },
+  });
+  const form = allElements(container).find((element) => element.tagName === 'form');
+  const controls = allElements(form).filter((element) => element.name);
+  form.elements = { namedItem: (name) => controls.find((element) => element.name === name) };
+  const field = (name) => form.elements.namedItem(name);
+  field('name_irl').value = 'Alice Example';
+  field('dob_month').value = '1';
+  field('dob_day').value = '2';
+  field('die_background').value = 'circle';
+  field('current_password').value = 'wrong';
+  field('new_password').value = 'new-pass';
+  field('confirm_new_password').value = 'new-pass';
+  field('new_email').value = 'alice2@example.test';
+  field('confirm_new_email').value = 'alice2@example.test';
+
+  await form.onsubmit({ preventDefault() {} });
+  assert.equal(sent.name_irl, 'Alice Example');
+  assert.equal(sent.autoaccept, true);
+  assert.equal(sent.current_password, 'wrong');
+  assert.equal(sent.new_password, 'new-pass');
+  assert.equal(sent.new_email, 'alice2@example.test');
+  const status = allElements(form).find((element) => element.getAttribute('role') === 'status');
+  assert.equal(status.textContent, 'Current password is incorrect.');
+  assert.equal(field('name_irl').value, 'Alice Example');
+  assert.equal(field('new_password').value, 'new-pass');
+
+  outcome = { ok: true, message: 'Saved successfully.' };
+  await form.onsubmit({ preventDefault() {} });
+  assert.equal(status.textContent, 'Saved successfully.');
+  assert.equal(field('current_password').value, '');
+  assert.equal(field('new_password').value, '');
+});
+
 test('web-ui: No filters given - submitting always carries sort and page even with blank fields', () => {
   const blank = paramsFromForm(fakeForm());
   assert.equal(blank.get('sortColumn'), 'lastMove');
@@ -918,9 +992,11 @@ test('web-ui: Tapping a result - opens the game on buttonweavers and shows a com
   const [gameCell, playerCell, buttonACell, opponentCell, , , , winnerCell, statusCell] = row.children;
   assert.equal(gameCell.children[0].href, gameUrl(42));
   assert.equal(gameCell.children[0].textContent, '42');
-  assert.equal(playerCell.textContent, 'alice');
+  assert.equal(playerCell.children[0].textContent, 'alice');
+  assert.equal(playerCell.children[0].href, profileUrl('alice'));
   assert.equal(buttonACell.textContent, 'Avis');
-  assert.equal(opponentCell.textContent, 'bob');
+  assert.equal(opponentCell.children[0].textContent, 'bob');
+  assert.equal(opponentCell.children[0].href, profileUrl('bob'));
   assert.equal(winnerCell.textContent, 'bob');
   assert.equal(statusCell.textContent, 'COMPLETE');
 });
@@ -1117,6 +1193,22 @@ test('web-ui: Profile shortcut - #profile opens the signed-in player profile and
       allElements(elements['profile-content']).some((element) => element.value === 'alice@example.test'),
       true,
     );
+  },
+));
+
+test('web-ui: Active games - opponent usernames link to profiles beside game links', withFakeApp(
+  {
+    hash: '#games',
+    fetchFn: (args) => {
+      if (args.type === 'loadPlayerName') return { json: async () => ({ status: 'ok', data: { userName: 'dan' } }) };
+      if (args.type === 'loadActiveGames') return { json: async () => ({ status: 'ok', data: games }) };
+      throw new Error(`Unexpected API call: ${args.type}`);
+    },
+  },
+  async ({ elements }) => {
+    const links = allElements(elements.games).filter((element) => element.tagName === 'a');
+    assert.ok(links.some((link) => link.textContent === 'Game 11' && link.href === gameViewUrl(11)));
+    assert.ok(links.some((link) => link.textContent === 'alice' && link.href === profileUrl('alice')));
   },
 ));
 

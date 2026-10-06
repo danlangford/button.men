@@ -1,4 +1,5 @@
 import { gameUrl } from './games.js';
+import { profileUrl } from './links.js';
 
 export const PAGE_SIZE = 20;
 
@@ -177,9 +178,11 @@ export function renderSearchResults(container, data, params) {
     const link = (text) => makeLink(document, text, buttonweaversGameUrl(game.gameId));
     const gameCell = makeElement(document, 'td');
     gameCell.append(link(String(game.gameId)));
-    const playerCell = makeElement(document, 'td', game.waitingOnA ? 'fw-semibold' : '', game.playerNameA || '');
+    const playerCell = makeElement(document, 'td', game.waitingOnA ? 'fw-semibold' : '');
+    if (game.playerNameA) playerCell.append(makeLink(document, game.playerNameA, profileUrl(game.playerNameA)));
     const buttonACell = makeElement(document, 'td', '', game.buttonNameA || '');
-    const opponentCell = makeElement(document, 'td', game.waitingOnB ? 'fw-semibold' : '', game.playerNameB || '');
+    const opponentCell = makeElement(document, 'td', game.waitingOnB ? 'fw-semibold' : '');
+    if (game.playerNameB) opponentCell.append(makeLink(document, game.playerNameB, profileUrl(game.playerNameB)));
     const buttonBCell = makeElement(document, 'td', '', game.buttonNameB || '');
     const startedCell = makeElement(document, 'td', '', formatDate(game.gameStart));
     const lastMoveCell = makeElement(document, 'td', '', formatDate(game.lastMove));
