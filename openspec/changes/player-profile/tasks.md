@@ -12,7 +12,7 @@
 
 ## 3. Navigation and usernames
 
-- [ ] 3.1 Add the shareable profile route, login redirect behavior and own-profile navigation; verify direct routing, own-profile shortcut and signed-out navigation in tests.
+- [x] 3.1 Add the shareable profile route, login redirect behavior and own-profile navigation; verify direct routing, own-profile shortcut and signed-out navigation in tests.
 - [ ] 3.2 Link usernames in forum, game views, active games and game search; verify profile URLs and valid link structure with renderer tests.
 
 ## 4. Integration

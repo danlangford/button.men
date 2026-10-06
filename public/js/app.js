@@ -7,11 +7,16 @@ import {
   forumThread,
   login,
   logout,
+  playerPreferences,
+  playerProfile,
+  recentPlayerGames,
+  savePlayerInfo,
   searchGameHistory,
 } from './api.js';
 import { gameList } from './games.js';
 import { renderGameView } from './game-view.js';
 import { renderForumBoard, renderForumOverview, renderForumThread } from './forum.js';
+import { renderProfile } from './profile.js';
 import { applyParamsToForm, paramsFromForm, renderSearchResults, searchArgsFromParams } from './search.js';
 import { initThemeControl } from './theme.js';
 
@@ -26,7 +31,9 @@ function show(view, player = '') {
   if (gameView) gameView.hidden = view !== 'game';
   $('forum-view').hidden = view !== 'forum';
   $('search-view').hidden = view !== 'search';
+  $('profile-view').hidden = view !== 'profile';
   $('player').textContent = player;
+  $('profile-link').hidden = view === 'login';
   $('forum-link').hidden = view === 'login';
   $('games-link').hidden = view === 'login';
   $('search-link').hidden = view === 'login';
@@ -167,9 +174,53 @@ async function showSearch(player) {
   }
 }
 
+async function showProfile(player, notice = '') {
+  const request = ++viewRequest;
+  show('profile', player);
+  showError('');
+  const content = $('profile-content');
+  content.replaceChildren();
+  const params = new URLSearchParams(hashQuery());
+  const playerName = params.get('player') || player;
+  if (!playerName || !/^[a-z\d]+$/i.test(playerName)) {
+    renderProfile(content, null);
+    return;
+  }
+  const profile = await playerProfile(playerName);
+  if (request !== viewRequest) return;
+  if (!profile) {
+    renderProfile(content, null);
+    return;
+  }
+  const isOwn = playerName === player;
+  const [gamesResult, preferencesResult] = await Promise.allSettled([
+    recentPlayerGames(playerName),
+    ...(isOwn ? [playerPreferences()] : []),
+  ]);
+  if (request !== viewRequest) return;
+  const preferences = isOwn ? preferencesResult : null;
+  renderProfile(content, profile, {
+    isOwn,
+    preferences: preferences?.status === 'fulfilled' ? preferences.value : undefined,
+    preferenceError: preferences?.status === 'rejected' ? preferences.reason.message : '',
+    games: gamesResult.status === 'fulfilled' ? gamesResult.value : [],
+    gamesError: gamesResult.status === 'rejected' ? gamesResult.reason.message : '',
+    notice,
+    onRetryGames: () => showProfile(playerName, notice),
+    onSave: async (args) => {
+      const result = await savePlayerInfo(args);
+      if (result.ok) {
+        await showProfile(playerName, result.message || 'Preferences saved.');
+      }
+      return result;
+    },
+  });
+}
+
 function currentView() {
   if (window.location.hash.startsWith('#!')) return 'forum';
   if (window.location.hash.startsWith('#search')) return 'search';
+  if (window.location.hash === '#profile' || window.location.hash.startsWith('#profile?')) return 'profile';
   if (window.location.hash === '#game' || window.location.hash.startsWith('#game?')) return 'game';
   return 'games';
 }
@@ -177,6 +228,7 @@ function currentView() {
 function showView(view, player) {
   if (view === 'forum') return showForum(player);
   if (view === 'search') return showSearch(player);
+  if (view === 'profile') return showProfile(player);
   if (view === 'game') return showGame(player);
   return showGames(player);
 }

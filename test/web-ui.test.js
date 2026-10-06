@@ -149,6 +149,7 @@ test('web-ui: Pages available without login - share site navigation and a theme 
     assert.match(html, /href="\/#games"/, `${page} links to games`);
     assert.match(html, /href="\/#!"/, `${page} links to the forum`);
     assert.match(html, /href="\/#search"/, `${page} links to search`);
+    assert.match(html, /href="\/#profile"/, `${page} links to the signed-in player's profile`);
     assert.match(html, /id="theme"/, `${page} has a theme control`);
   }
 });
@@ -368,9 +369,9 @@ test('web-ui: Replying - thread reply link opens the same buttonweavers thread',
 
 test('web-ui: Navigating to games - a late forum response does not replace the games view', async () => {
   const ids = [
-    'theme', 'login-view', 'games-view', 'forum-view', 'search-view', 'player', 'forum-link',
-    'search-link', 'games-link', 'logout', 'error', 'forum-content', 'search-form', 'search-results',
-    'games', 'no-games', 'login-form',
+    'theme', 'login-view', 'games-view', 'forum-view', 'search-view', 'profile-view', 'player',
+    'forum-link', 'search-link', 'games-link', 'profile-link', 'logout', 'error', 'forum-content',
+    'profile-content', 'search-form', 'search-results', 'games', 'no-games', 'login-form',
   ];
   const document = fakeDocument();
   const elements = Object.fromEntries(ids.map((id) => [id, document.createElement('div')]));
@@ -979,9 +980,9 @@ test('web-ui: Viewing search results - the summary states the current page, tota
 
 function fakeSearchIds() {
   return [
-    'theme', 'login-view', 'games-view', 'forum-view', 'search-view', 'player', 'forum-link',
-    'search-link', 'games-link', 'logout', 'error', 'forum-content', 'search-results',
-    'games', 'no-games', 'login-form',
+    'theme', 'login-view', 'games-view', 'forum-view', 'search-view', 'profile-view', 'player',
+    'forum-link', 'search-link', 'games-link', 'profile-link', 'logout', 'error', 'forum-content',
+    'search-results', 'profile-content', 'games', 'no-games', 'login-form',
   ];
 }
 
@@ -1056,6 +1057,66 @@ test('web-ui: Not logged in - reaching game search sends an anonymous visitor to
     assert.equal(elements['login-view'].hidden, false);
     assert.equal(elements['search-view'].hidden, true);
     assert.equal(calls.some((c) => c.type === 'searchGameHistory'), false);
+  },
+));
+
+test('web-ui: Not logged in - opening a profile waits for login without loading profile data', withFakeApp(
+  {
+    hash: '#profile?player=alice',
+    fetchFn: (args) => {
+      if (args.type === 'loadPlayerName') return { json: async () => ({ status: 'failed', data: null }) };
+      throw new Error(`Unexpected API call: ${args.type}`);
+    },
+  },
+  async ({ elements, calls }) => {
+    assert.equal(elements['login-view'].hidden, false);
+    assert.equal(elements['profile-view'].hidden, true);
+    assert.equal(calls.some((call) => call.type === 'loadProfileInfo'), false);
+  },
+));
+
+test('web-ui: Viewing another player - profile and games load without private preferences', withFakeApp(
+  {
+    hash: '#profile?player=alice',
+    fetchFn: (args) => {
+      if (args.type === 'loadPlayerName') return { json: async () => ({ status: 'ok', data: { userName: 'dan' } }) };
+      if (args.type === 'loadProfileInfo') {
+        return { json: async () => ({ status: 'ok', data: { profile_info: { name_ingame: 'alice', email: null } } }) };
+      }
+      if (args.type === 'searchGameHistory') return { json: async () => ({ status: 'ok', data: { games: [] } }) };
+      throw new Error(`Unexpected API call: ${args.type}`);
+    },
+  },
+  async ({ elements, calls }) => {
+    assert.equal(elements['profile-view'].hidden, false);
+    assert.match(elements['profile-content'].textContent, /alice/);
+    assert.equal(calls.some((call) => call.type === 'loadPlayerInfo'), false);
+    assert.equal(elements['profile-link'].hidden, false);
+  },
+));
+
+test('web-ui: Profile shortcut - #profile opens the signed-in player profile and preferences', withFakeApp(
+  {
+    hash: '#profile',
+    fetchFn: (args) => {
+      if (args.type === 'loadPlayerName') return { json: async () => ({ status: 'ok', data: { userName: 'alice' } }) };
+      if (args.type === 'loadProfileInfo') {
+        return { json: async () => ({ status: 'ok', data: { profile_info: { name_ingame: 'alice', email: null } } }) };
+      }
+      if (args.type === 'searchGameHistory') return { json: async () => ({ status: 'ok', data: { games: [] } }) };
+      if (args.type === 'loadPlayerInfo') {
+        return { json: async () => ({ status: 'ok', data: { user_prefs: { email: 'alice@example.test' } } }) };
+      }
+      throw new Error(`Unexpected API call: ${args.type}`);
+    },
+  },
+  async ({ elements, calls }) => {
+    assert.equal(elements['profile-view'].hidden, false);
+    assert.equal(calls.some((call) => call.type === 'loadPlayerInfo'), true);
+    assert.equal(
+      allElements(elements['profile-content']).some((element) => element.value === 'alice@example.test'),
+      true,
+    );
   },
 ));
 
