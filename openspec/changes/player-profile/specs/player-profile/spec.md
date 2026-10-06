@@ -28,6 +28,21 @@ The profile screen SHALL display the profile information buttonweavers provides 
 - **WHEN** a player opens a profile for a username that does not exist
 - **THEN** a clear "player not found" message is shown
 
+### Requirement: Statistics and recent games
+The profile screen SHALL display any statistics that buttonweavers returns for the player, and SHALL list some of the player's most recent games, obtained from game history search, each linking to its game.
+
+#### Scenario: Statistics shown
+- **WHEN** buttonweavers returns statistics for the viewed player
+- **THEN** the profile displays them
+
+#### Scenario: Recent games shown
+- **WHEN** a logged-in player opens a profile of a player who has completed games
+- **THEN** that player's most recent games are listed, each linking to the game
+
+#### Scenario: No games
+- **WHEN** the viewed player has no completed games
+- **THEN** the recent games section says so instead of showing an empty list
+
 ### Requirement: Shareable profile address
 Each player's profile SHALL have a stable address that opens that player's profile directly, so it can be linked from anywhere and bookmarked.
 

@@ -9,6 +9,7 @@ Players want to see and edit their own profile and preferences, and to look at o
 - A new profile screen showing any player's profile, reachable by username.
 - For the logged-in player's own profile, the same screen shows their preferences and lets them edit the ones buttonweavers allows editing.
 - Usernames shown in the forum, in games and on other screens link to that player's profile.
+- The profile screen also shows the player's statistics (when provided) and a few of their most recent games.
 - The profile screen has a stable, shareable address per player.
 - The site navigation gains a link to the logged-in player's own profile and preferences.
 
@@ -29,11 +30,11 @@ Players want to see and edit their own profile and preferences, and to look at o
 
 - Creating or storing profile or preference data that buttonweavers does not already use.
 
-## Questions for the dev
+## Decisions from the dev
 
-- Should the profile show the player's recent games or statistics if `loadProfileInfo` returns them, or only profile fields?
-- Password and email changes are accepted by `savePlayerInfo` (`current_password`, `new_password`, `new_email`). Are these in scope for the edit form, or should they stay on buttonweavers? The spec delta currently includes them as editable.
-- Should anonymous visitors be able to view profiles? Buttonweavers' profile page requires login; the draft follows that.
+- The profile shows whatever `loadProfileInfo` returns, including statistics, and also uses game history search to show some of the player's most recent games.
+- Password and email changes are editable on the profile screen, since the API supports them.
+- Profiles require login, as on buttonweavers.
 
 ## Impact
 
