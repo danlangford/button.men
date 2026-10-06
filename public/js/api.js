@@ -103,3 +103,34 @@ export async function searchGameHistory(args, call = callApi) {
   if (result.status !== 'ok') throw new Error(result.message || 'Game search failed');
   return result.data;
 }
+
+export async function playerProfile(playerName, call = callApi) {
+  const result = await call({ type: 'loadProfileInfo', playerName });
+  if (result.status === 'ok') return result.data?.profile_info ?? null;
+  if (/player name does not exist/i.test(result.message || '')) return null;
+  throw new Error(result.message || 'Could not load player profile');
+}
+
+export async function playerPreferences(call = callApi) {
+  const result = await call({ type: 'loadPlayerInfo' });
+  if (result.status !== 'ok') throw new Error(result.message || 'Could not load preferences');
+  if (!result.data?.user_prefs) throw new Error('Buttonweavers returned incomplete preferences');
+  return result.data.user_prefs;
+}
+
+export async function savePlayerInfo(args, call = callApi) {
+  const result = await call({ type: 'savePlayerInfo', ...args });
+  return { ok: result.status === 'ok', message: result.message };
+}
+
+export async function recentPlayerGames(playerName, call = callApi) {
+  const data = await searchGameHistory({
+    playerNameA: playerName,
+    status: 'COMPLETE',
+    sortColumn: 'lastMove',
+    sortDirection: 'DESC',
+    numberOfResults: 5,
+    page: 1,
+  }, call);
+  return data.games || [];
+}

@@ -11,10 +11,15 @@ import {
   forumThread,
   login,
   logout,
+  playerPreferences,
+  playerProfile,
+  recentPlayerGames,
   searchGameHistory,
+  savePlayerInfo,
 } from '../public/js/api.js';
 import { gameList, gameUrl, gameViewUrl } from '../public/js/games.js';
 import { renderGameView } from '../public/js/game-view.js';
+import { buildPreferenceSaveArgs, profileUrl, renderProfile } from '../public/js/profile.js';
 import {
   buttonweaversThreadUrl,
   forumThreadUrl,
@@ -121,6 +126,10 @@ test('web-ui: Narrow screen - pages are responsive', () => {
   assert.match(html, /class="navbar-controls d-flex flex-wrap align-items-center gap-2 ms-auto"/);
   assert.match(html, /class="navbar-player text-body-secondary"/);
   assert.match(html, /main \{ min-width: 0; overflow-wrap: anywhere; \}/);
+  assert.match(html, /id="profile-view"/);
+  const profile = read('public/js/profile.js');
+  assert.match(profile, /col-12 col-lg-8/);
+  assert.match(profile, /form-control/);
 });
 
 test('web-ui: Device in dark mode - auto follows the device', () => {
@@ -144,6 +153,7 @@ test('web-ui: Pages available without login - share site navigation and a theme 
     assert.match(html, /href="\/#games"/, `${page} links to games`);
     assert.match(html, /href="\/#!"/, `${page} links to the forum`);
     assert.match(html, /href="\/#search"/, `${page} links to search`);
+    assert.match(html, /href="\/#profile"/, `${page} links to the signed-in player's profile`);
     assert.match(html, /id="theme"/, `${page} has a theme control`);
   }
 });
@@ -305,9 +315,11 @@ test('web-ui: Busy board - threads render latest activity first with an unread-p
     ],
   });
   const links = allElements(container).filter((element) => element.tagName === 'a');
-  assert.deepEqual(links.slice(1).map((link) => link.children[0].textContent), ['Latest', 'Older']);
-  assert.equal(links[1].href, forumThreadUrl(2, 37));
-  assert.equal(links[1].textContent.includes('New posts'), true);
+  const threadLinks = links.filter((link) => link.href.startsWith('#!threadId='));
+  assert.deepEqual(threadLinks.map((link) => link.textContent), ['Latest', 'Older']);
+  assert.equal(threadLinks[0].href, forumThreadUrl(2, 37));
+  assert.ok(links.some((link) => link.textContent === 'bob' && link.href === profileUrl('bob')));
+  assert.ok(links.some((link) => link.textContent === 'alice' && link.href === profileUrl('alice')));
 });
 
 test('web-ui: Thread with unread posts - ordered posts render and the page scrolls to the first unread', () => {
@@ -340,9 +352,9 @@ test('web-ui: Thread with unread posts - ordered posts render and the page scrol
   assert.deepEqual(renderedBody.children, []);
   const deletedBody = allElements(posts[0]).find((element) => element.className?.includes('forum-post-body'));
   assert.match(deletedBody.className, /text-body-secondary/);
-  const author = allElements(target).find((element) => element.tagName === 'strong');
+  const author = allElements(target).find((element) => element.tagName === 'a' && element.textContent === 'bob');
   const time = allElements(target).find((element) => element.tagName === 'time');
-  assert.equal(author.textContent, 'bob');
+  assert.equal(author.href, profileUrl('bob'));
   assert.notEqual(time.dateTime, undefined);
 });
 
@@ -363,9 +375,9 @@ test('web-ui: Replying - thread reply link opens the same buttonweavers thread',
 
 test('web-ui: Navigating to games - a late forum response does not replace the games view', async () => {
   const ids = [
-    'theme', 'login-view', 'games-view', 'forum-view', 'search-view', 'player', 'forum-link',
-    'search-link', 'games-link', 'logout', 'error', 'forum-content', 'search-form', 'search-results',
-    'games', 'no-games', 'login-form',
+    'theme', 'login-view', 'games-view', 'forum-view', 'search-view', 'profile-view', 'player',
+    'forum-link', 'search-link', 'games-link', 'profile-link', 'logout', 'error', 'forum-content',
+    'profile-content', 'search-form', 'search-results', 'games', 'no-games', 'login-form',
   ];
   const document = fakeDocument();
   const elements = Object.fromEntries(ids.map((id) => [id, document.createElement('div')]));
@@ -513,6 +525,8 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.equal(board.hidden, true);
   assert.match(board.children[0].textContent, /alice/);
   assert.match(board.children[1].textContent, /dan/);
+  assert.ok(allElements(root).some((element) => element.textContent === 'alice' && element.href === profileUrl('alice')));
+  assert.ok(allElements(root).some((element) => element.textContent === 'dan' && element.href === profileUrl('dan')));
   const aliceDice = board.children[0].children.find((element) => element.className?.startsWith('game-dice '));
   assert.equal(aliceDice.children.length, 2);
   const recentlyCaptured = aliceDice.children.find((element) => element.className.includes('game-die-captured'));
@@ -584,6 +598,280 @@ test('web-ui: Search reads - request the sort, page and given filters', async ()
     searchGameHistory({}, async () => ({ status: 'failed', message: 'Game search failed.' })),
     /Game search failed\./,
   );
+});
+
+test('web-ui: Profile API - loads public profiles, handles missing players and reports errors', async () => {
+  const profile = { name_ingame: 'alice', email: null, n_games_won: 5 };
+  let request;
+  assert.deepEqual(await playerProfile('alice', async (args) => {
+    request = args;
+    return { status: 'ok', data: { profile_info: profile } };
+  }), profile);
+  assert.deepEqual(request, { type: 'loadProfileInfo', playerName: 'alice' });
+  assert.equal(await playerProfile('nobody', async () => ({
+    status: 'failed', message: 'Player name does not exist.',
+  })), null);
+  await assert.rejects(
+    playerProfile('alice', async () => ({ status: 'failed', message: 'Profile unavailable.' })),
+    /Profile unavailable\./,
+  );
+});
+
+test('web-ui: Preference API - loads private preferences and submits saves with upstream messages', async () => {
+  const prefs = { email: 'alice@example.test', autoaccept: true };
+  let request;
+  assert.deepEqual(await playerPreferences(async (args) => {
+    request = args;
+    return { status: 'ok', data: { user_prefs: prefs } };
+  }), prefs);
+  assert.deepEqual(request, { type: 'loadPlayerInfo' });
+  await assert.rejects(
+    playerPreferences(async () => ({ status: 'failed', message: 'Login required.' })),
+    /Login required\./,
+  );
+
+  assert.deepEqual(await savePlayerInfo({ name_irl: 'Alice' }, async (args) => {
+    request = args;
+    return { status: 'ok', message: 'Saved.' };
+  }), { ok: true, message: 'Saved.' });
+  assert.deepEqual(request, { type: 'savePlayerInfo', name_irl: 'Alice' });
+  assert.deepEqual(await savePlayerInfo({}, async () => ({
+    status: 'failed', message: 'Current password is incorrect.',
+  })), { ok: false, message: 'Current password is incorrect.' });
+});
+
+test('web-ui: Recent profile games - search completed games newest first', async () => {
+  const games = [{ gameId: 12 }, { gameId: 9 }];
+  let request;
+  assert.deepEqual(await recentPlayerGames('alice', async (args) => {
+    request = args;
+    return { status: 'ok', data: { games } };
+  }), games);
+  assert.deepEqual(request, {
+    type: 'searchGameHistory',
+    playerNameA: 'alice',
+    status: 'COMPLETE',
+    sortColumn: 'lastMove',
+    sortDirection: 'DESC',
+    numberOfResults: 5,
+    page: 1,
+  });
+  await assert.rejects(
+    recentPlayerGames('alice', async () => ({ status: 'failed', message: 'History unavailable.' })),
+    /History unavailable\./,
+  );
+});
+
+test('web-ui: Public profile - shows public fields, statistics and linked recent games safely', () => {
+  const document = fakeDocument();
+  const container = document.createElement('main');
+  const unsafeComment = '<img src=x onerror=alert(1)>';
+  renderProfile(container, {
+    name_ingame: 'alice',
+    name_irl: 'Alice',
+    email: null,
+    comment: unsafeComment,
+    n_games_won: 4,
+    n_games_lost: 2,
+  }, {
+    games: [{
+      gameId: 22,
+      playerNameA: 'alice',
+      playerNameB: 'bob',
+      status: 'COMPLETE',
+      lastMove: 1760000000,
+    }],
+  });
+  assert.match(container.textContent, /Alice/);
+  assert.match(container.textContent, /4 wins · 2 losses/);
+  assert.match(container.textContent, new RegExp(unsafeComment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal(allElements(container).some((element) => element.tagName === 'img' && element.textContent === unsafeComment), false);
+  assert.equal(container.textContent.includes('alice@example.test'), false);
+  const links = allElements(container).filter((element) => element.tagName === 'a');
+  assert.ok(links.some((element) => element.textContent === 'Game 22' && element.href === '#game?gameId=22'));
+  assert.ok(links.some((element) => element.textContent === 'bob' && element.href === profileUrl('bob')));
+});
+
+test('web-ui: Own profile - shows preferences privately and reports missing players or games', () => {
+  const document = fakeDocument();
+  const container = document.createElement('main');
+  const preferences = {
+    email: 'alice@example.test',
+    name_irl: 'Alice',
+    dob_month: 1,
+    dob_day: 2,
+    is_email_public: false,
+    pronouns: 'she/her',
+    uses_gravatar: true,
+    image_size: 100,
+    favorite_button: 'Avis',
+    favorite_buttonset: 'Classic',
+    homepage: 'https://example.test',
+    comment: 'Hello',
+    vacation_message: '',
+    autoaccept: true,
+    autopass: false,
+    fire_overshooting: false,
+    monitor_redirects_to_game: true,
+    monitor_redirects_to_forum: false,
+    automatically_monitor: false,
+    player_color: '#dd99dd',
+    opponent_color: '#ddffdd',
+    neutral_color_a: '#cccccc',
+    neutral_color_b: '#dddddd',
+    die_background: 'circle',
+  };
+  renderProfile(container, {
+    name_ingame: 'alice',
+    email: null,
+    uses_gravatar: true,
+    email_hash: '0123456789abcdef0123456789abcdef',
+    image_size: 100,
+  }, {
+    isOwn: true,
+    preferences,
+  });
+  assert.match(container.textContent, /Preferences/);
+  assert.equal(
+    allElements(container).find((element) => element.tagName === 'input' && element.name === 'email')?.value,
+    'alice@example.test',
+  );
+  assert.equal(
+    allElements(container).find((element) => element.tagName === 'img')?.src,
+    'https://www.gravatar.com/avatar/0123456789abcdef0123456789abcdef?s=100',
+  );
+
+  const other = document.createElement('main');
+  renderProfile(other, { name_ingame: 'bob', email: null }, { preferences });
+  assert.doesNotMatch(other.textContent, /Preferences/);
+  assert.equal(allElements(other).some((element) => element.value === 'alice@example.test'), false);
+  assert.match(other.textContent, /No completed games\./);
+
+  const missing = document.createElement('main');
+  renderProfile(missing, null);
+  assert.equal(missing.textContent, 'Player not found.');
+});
+
+test('web-ui: Saving one preference - retains other fields and sends account changes only when supplied', () => {
+  const preferences = {
+    name_irl: 'Alice',
+    is_email_public: true,
+    dob_month: 4,
+    dob_day: 12,
+    pronouns: 'they/them',
+    comment: 'Existing',
+    homepage: 'https://example.test',
+    autoaccept: true,
+    autopass: false,
+    fire_overshooting: true,
+    monitor_redirects_to_game: true,
+    monitor_redirects_to_forum: false,
+    automatically_monitor: true,
+    die_background: 'circle',
+    player_color: '#dd99dd',
+    opponent_color: '#ddffdd',
+    neutral_color_a: '#cccccc',
+    neutral_color_b: '#dddddd',
+    uses_gravatar: true,
+    vacation_message: 'Away',
+    favorite_button: 'Avis',
+    favorite_buttonset: 'Classic',
+    image_size: 120,
+  };
+  const args = buildPreferenceSaveArgs(preferences, { name_irl: 'Alice Example' });
+  assert.equal(args.name_irl, 'Alice Example');
+  assert.equal(args.comment, 'Existing');
+  assert.equal(args.autoaccept, true);
+  assert.equal(args.player_color, '#dd99dd');
+  assert.equal(args.favorite_button, 'Avis');
+  assert.equal(args.image_size, 120);
+  assert.equal('current_password' in args, false);
+  assert.equal('new_email' in args, false);
+
+  const accountChange = buildPreferenceSaveArgs(preferences, {
+    current_password: 'secret',
+    new_password: 'new-secret',
+    new_email: 'alice2@example.test',
+    image_size: '',
+    favorite_button: '',
+    favorite_buttonset: '',
+  });
+  assert.equal(accountChange.current_password, 'secret');
+  assert.equal(accountChange.new_password, 'new-secret');
+  assert.equal(accountChange.new_email, 'alice2@example.test');
+  assert.equal('image_size' in accountChange, false);
+  assert.equal('favorite_button' in accountChange, false);
+  assert.equal('favorite_buttonset' in accountChange, false);
+});
+
+test('web-ui: Rejected preference save - shows the API message and keeps entries until success', async () => {
+  const document = fakeDocument();
+  const container = document.createElement('main');
+  let outcome = { ok: false, message: 'Current password is incorrect.' };
+  let sent;
+  renderProfile(container, { name_ingame: 'alice' }, {
+    isOwn: true,
+    preferences: {
+      name_irl: 'Alice',
+      is_email_public: false,
+      dob_month: 1,
+      dob_day: 2,
+      pronouns: '',
+      uses_gravatar: false,
+      image_size: 100,
+      favorite_button: '',
+      favorite_buttonset: '',
+      homepage: '',
+      comment: '',
+      vacation_message: '',
+      autoaccept: true,
+      autopass: false,
+      monitor_redirects_to_game: false,
+      monitor_redirects_to_forum: false,
+      automatically_monitor: false,
+      fire_overshooting: false,
+      player_color: '#dd99dd',
+      opponent_color: '#ddffdd',
+      neutral_color_a: '#cccccc',
+      neutral_color_b: '#dddddd',
+      die_background: 'circle',
+      email: 'alice@example.test',
+    },
+    onSave: async (args) => {
+      sent = args;
+      return outcome;
+    },
+  });
+  const form = allElements(container).find((element) => element.tagName === 'form');
+  const controls = allElements(form).filter((element) => element.name);
+  form.elements = { namedItem: (name) => controls.find((element) => element.name === name) };
+  const field = (name) => form.elements.namedItem(name);
+  field('name_irl').value = 'Alice Example';
+  field('dob_month').value = '1';
+  field('dob_day').value = '2';
+  field('die_background').value = 'circle';
+  field('current_password').value = 'wrong';
+  field('new_password').value = 'new-pass';
+  field('confirm_new_password').value = 'new-pass';
+  field('new_email').value = 'alice2@example.test';
+  field('confirm_new_email').value = 'alice2@example.test';
+
+  await form.onsubmit({ preventDefault() {} });
+  assert.equal(sent.name_irl, 'Alice Example');
+  assert.equal(sent.autoaccept, true);
+  assert.equal(sent.current_password, 'wrong');
+  assert.equal(sent.new_password, 'new-pass');
+  assert.equal(sent.new_email, 'alice2@example.test');
+  const status = allElements(form).find((element) => element.getAttribute('role') === 'status');
+  assert.equal(status.textContent, 'Current password is incorrect.');
+  assert.equal(field('name_irl').value, 'Alice Example');
+  assert.equal(field('new_password').value, 'new-pass');
+
+  outcome = { ok: true, message: 'Saved successfully.' };
+  await form.onsubmit({ preventDefault() {} });
+  assert.equal(status.textContent, 'Saved successfully.');
+  assert.equal(field('current_password').value, '');
+  assert.equal(field('new_password').value, '');
 });
 
 test('web-ui: No filters given - submitting always carries sort and page even with blank fields', () => {
@@ -708,9 +996,11 @@ test('web-ui: Tapping a result - opens the game on buttonweavers and shows a com
   const [gameCell, playerCell, buttonACell, opponentCell, , , , winnerCell, statusCell] = row.children;
   assert.equal(gameCell.children[0].href, gameUrl(42));
   assert.equal(gameCell.children[0].textContent, '42');
-  assert.equal(playerCell.textContent, 'alice');
+  assert.equal(playerCell.children[0].textContent, 'alice');
+  assert.equal(playerCell.children[0].href, profileUrl('alice'));
   assert.equal(buttonACell.textContent, 'Avis');
-  assert.equal(opponentCell.textContent, 'bob');
+  assert.equal(opponentCell.children[0].textContent, 'bob');
+  assert.equal(opponentCell.children[0].href, profileUrl('bob'));
   assert.equal(winnerCell.textContent, 'bob');
   assert.equal(statusCell.textContent, 'COMPLETE');
 });
@@ -770,9 +1060,9 @@ test('web-ui: Viewing search results - the summary states the current page, tota
 
 function fakeSearchIds() {
   return [
-    'theme', 'login-view', 'games-view', 'forum-view', 'search-view', 'player', 'forum-link',
-    'search-link', 'games-link', 'logout', 'error', 'forum-content', 'search-results',
-    'games', 'no-games', 'login-form',
+    'theme', 'login-view', 'games-view', 'forum-view', 'search-view', 'profile-view', 'player',
+    'forum-link', 'search-link', 'games-link', 'profile-link', 'logout', 'error', 'forum-content',
+    'search-results', 'profile-content', 'games', 'no-games', 'login-form',
   ];
 }
 
@@ -847,6 +1137,82 @@ test('web-ui: Not logged in - reaching game search sends an anonymous visitor to
     assert.equal(elements['login-view'].hidden, false);
     assert.equal(elements['search-view'].hidden, true);
     assert.equal(calls.some((c) => c.type === 'searchGameHistory'), false);
+  },
+));
+
+test('web-ui: Not logged in - opening a profile waits for login without loading profile data', withFakeApp(
+  {
+    hash: '#profile?player=alice',
+    fetchFn: (args) => {
+      if (args.type === 'loadPlayerName') return { json: async () => ({ status: 'failed', data: null }) };
+      throw new Error(`Unexpected API call: ${args.type}`);
+    },
+  },
+  async ({ elements, calls }) => {
+    assert.equal(elements['login-view'].hidden, false);
+    assert.equal(elements['profile-view'].hidden, true);
+    assert.equal(calls.some((call) => call.type === 'loadProfileInfo'), false);
+  },
+));
+
+test('web-ui: Viewing another player - profile and games load without private preferences', withFakeApp(
+  {
+    hash: '#profile?player=alice',
+    fetchFn: (args) => {
+      if (args.type === 'loadPlayerName') return { json: async () => ({ status: 'ok', data: { userName: 'dan' } }) };
+      if (args.type === 'loadProfileInfo') {
+        return { json: async () => ({ status: 'ok', data: { profile_info: { name_ingame: 'alice', email: null } } }) };
+      }
+      if (args.type === 'searchGameHistory') return { json: async () => ({ status: 'ok', data: { games: [] } }) };
+      throw new Error(`Unexpected API call: ${args.type}`);
+    },
+  },
+  async ({ elements, calls }) => {
+    assert.equal(elements['profile-view'].hidden, false);
+    assert.match(elements['profile-content'].textContent, /alice/);
+    assert.equal(calls.some((call) => call.type === 'loadPlayerInfo'), false);
+    assert.equal(elements['profile-link'].hidden, false);
+  },
+));
+
+test('web-ui: Profile shortcut - #profile opens the signed-in player profile and preferences', withFakeApp(
+  {
+    hash: '#profile',
+    fetchFn: (args) => {
+      if (args.type === 'loadPlayerName') return { json: async () => ({ status: 'ok', data: { userName: 'alice' } }) };
+      if (args.type === 'loadProfileInfo') {
+        return { json: async () => ({ status: 'ok', data: { profile_info: { name_ingame: 'alice', email: null } } }) };
+      }
+      if (args.type === 'searchGameHistory') return { json: async () => ({ status: 'ok', data: { games: [] } }) };
+      if (args.type === 'loadPlayerInfo') {
+        return { json: async () => ({ status: 'ok', data: { user_prefs: { email: 'alice@example.test' } } }) };
+      }
+      throw new Error(`Unexpected API call: ${args.type}`);
+    },
+  },
+  async ({ elements, calls }) => {
+    assert.equal(elements['profile-view'].hidden, false);
+    assert.equal(calls.some((call) => call.type === 'loadPlayerInfo'), true);
+    assert.equal(
+      allElements(elements['profile-content']).some((element) => element.value === 'alice@example.test'),
+      true,
+    );
+  },
+));
+
+test('web-ui: Active games - opponent usernames link to profiles beside game links', withFakeApp(
+  {
+    hash: '#games',
+    fetchFn: (args) => {
+      if (args.type === 'loadPlayerName') return { json: async () => ({ status: 'ok', data: { userName: 'dan' } }) };
+      if (args.type === 'loadActiveGames') return { json: async () => ({ status: 'ok', data: games }) };
+      throw new Error(`Unexpected API call: ${args.type}`);
+    },
+  },
+  async ({ elements }) => {
+    const links = allElements(elements.games).filter((element) => element.tagName === 'a');
+    assert.ok(links.some((link) => link.textContent === 'Game 11' && link.href === gameViewUrl(11)));
+    assert.ok(links.some((link) => link.textContent === 'alice' && link.href === profileUrl('alice')));
   },
 ));
 

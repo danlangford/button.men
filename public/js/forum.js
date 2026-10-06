@@ -1,4 +1,5 @@
 import { BUTTONWEAVERS } from './config.js';
+import { profileUrl } from './links.js';
 
 function makeElement(document, tagName, className, text) {
   const element = document.createElement(tagName);
@@ -61,24 +62,28 @@ export function renderForumBoard(container, data) {
   const description = makeElement(document, 'p', 'text-body-secondary', data.description);
   const threads = makeElement(document, 'div', 'list-group');
   for (const thread of latestFirst(data.threads)) {
-    const link = makeLink(
+    const item = makeElement(document, 'div', 'list-group-item');
+    const threadLink = makeLink(
       document,
-      '',
+      thread.threadTitle,
       forumThreadUrl(thread.threadId, thread.firstNewPostId),
-      'list-group-item list-group-item-action',
+      'fw-semibold',
     );
-    const title = makeElement(document, 'div', 'fw-semibold', thread.threadTitle);
     const activity = makeElement(
       document,
       'div',
-      'small text-body-secondary',
-      `Latest by ${thread.latestPosterName} · ${formatTime(thread.latestLastUpdateTime)}`,
+      'small text-body-secondary mt-1',
     );
-    link.append(title, activity);
+    activity.textContent = 'Latest by ';
+    activity.append(
+      makeLink(document, thread.latestPosterName, profileUrl(thread.latestPosterName)),
+      makeElement(document, 'span', '', ` · ${formatTime(thread.latestLastUpdateTime)}`),
+    );
+    item.append(threadLink, activity);
     if (thread.firstNewPostId !== null && thread.firstNewPostId !== undefined) {
-      link.append(makeElement(document, 'span', 'badge text-bg-primary mt-2', 'New posts'));
+      item.append(makeElement(document, 'span', 'badge text-bg-primary mt-2', 'New posts'));
     }
-    threads.append(link);
+    threads.append(item);
   }
   container.replaceChildren(breadcrumb, heading, description, threads);
 }
@@ -102,7 +107,7 @@ export function renderForumThread(container, data) {
     const article = makeElement(document, 'article', 'card');
     article.id = `forum-post-${post.postId}`;
     const header = makeElement(document, 'div', 'card-header d-flex justify-content-between gap-2');
-    const author = makeElement(document, 'strong', '', post.posterName);
+    const author = makeLink(document, post.posterName, profileUrl(post.posterName), 'fw-semibold');
     const time = makeElement(document, 'time', 'small text-body-secondary', formatTime(post.creationTime));
     const date = new Date(Number(post.creationTime) * 1000);
     if (Number.isFinite(date.getTime())) time.dateTime = date.toISOString();

@@ -7,11 +7,17 @@ import {
   forumThread,
   login,
   logout,
+  playerPreferences,
+  playerProfile,
+  recentPlayerGames,
+  savePlayerInfo,
   searchGameHistory,
 } from './api.js';
 import { gameList } from './games.js';
 import { renderGameView } from './game-view.js';
 import { renderForumBoard, renderForumOverview, renderForumThread } from './forum.js';
+import { renderProfile } from './profile.js';
+import { profileUrl } from './links.js';
 import { applyParamsToForm, paramsFromForm, renderSearchResults, searchArgsFromParams } from './search.js';
 import { initThemeControl } from './theme.js';
 
@@ -26,7 +32,9 @@ function show(view, player = '') {
   if (gameView) gameView.hidden = view !== 'game';
   $('forum-view').hidden = view !== 'forum';
   $('search-view').hidden = view !== 'search';
+  $('profile-view').hidden = view !== 'profile';
   $('player').textContent = player;
+  $('profile-link').hidden = view === 'login';
   $('forum-link').hidden = view === 'login';
   $('games-link').hidden = view === 'login';
   $('search-link').hidden = view === 'login';
@@ -56,18 +64,26 @@ function showError(message, retry) {
 }
 
 function gameItem(game) {
-  const item = document.createElement('a');
-  item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-start gap-2';
-  item.href = game.href;
+  const item = document.createElement('div');
+  item.className = 'list-group-item d-flex justify-content-between align-items-start gap-2';
 
   const text = document.createElement('div');
   const title = document.createElement('div');
   title.className = 'fw-semibold';
-  title.textContent = `vs ${game.opponent}`;
+  const gameLink = document.createElement('a');
+  gameLink.href = game.href;
+  gameLink.textContent = `Game ${game.id}`;
+  title.append(gameLink);
+  const opponent = document.createElement('div');
+  opponent.textContent = 'vs ';
+  const opponentLink = document.createElement('a');
+  opponentLink.href = profileUrl(game.opponent);
+  opponentLink.textContent = game.opponent;
+  opponent.append(opponentLink);
   const detail = document.createElement('small');
   detail.className = 'text-body-secondary';
   detail.textContent = `${game.myButton} vs ${game.opponentButton} · ${game.wins}-${game.losses}-${game.draws} (to ${game.target})`;
-  text.append(title, detail);
+  text.append(title, opponent, detail);
   if (game.description) {
     const description = document.createElement('div');
     description.className = 'small text-body-secondary fst-italic';
@@ -167,9 +183,53 @@ async function showSearch(player) {
   }
 }
 
+async function showProfile(player, notice = '') {
+  const request = ++viewRequest;
+  show('profile', player);
+  showError('');
+  const content = $('profile-content');
+  content.replaceChildren();
+  const params = new URLSearchParams(hashQuery());
+  const playerName = params.get('player') || player;
+  if (!playerName || !/^[a-z\d]+$/i.test(playerName)) {
+    renderProfile(content, null);
+    return;
+  }
+  const profile = await playerProfile(playerName);
+  if (request !== viewRequest) return;
+  if (!profile) {
+    renderProfile(content, null);
+    return;
+  }
+  const isOwn = playerName === player;
+  const [gamesResult, preferencesResult] = await Promise.allSettled([
+    recentPlayerGames(playerName),
+    ...(isOwn ? [playerPreferences()] : []),
+  ]);
+  if (request !== viewRequest) return;
+  const preferences = isOwn ? preferencesResult : null;
+  renderProfile(content, profile, {
+    isOwn,
+    preferences: preferences?.status === 'fulfilled' ? preferences.value : undefined,
+    preferenceError: preferences?.status === 'rejected' ? preferences.reason.message : '',
+    games: gamesResult.status === 'fulfilled' ? gamesResult.value : [],
+    gamesError: gamesResult.status === 'rejected' ? gamesResult.reason.message : '',
+    notice,
+    onRetryGames: () => showProfile(playerName, notice),
+    onSave: async (args) => {
+      const result = await savePlayerInfo(args);
+      if (result.ok) {
+        await showProfile(playerName, result.message || 'Preferences saved.');
+      }
+      return result;
+    },
+  });
+}
+
 function currentView() {
   if (window.location.hash.startsWith('#!')) return 'forum';
   if (window.location.hash.startsWith('#search')) return 'search';
+  if (window.location.hash === '#profile' || window.location.hash.startsWith('#profile?')) return 'profile';
   if (window.location.hash === '#game' || window.location.hash.startsWith('#game?')) return 'game';
   return 'games';
 }
@@ -177,6 +237,7 @@ function currentView() {
 function showView(view, player) {
   if (view === 'forum') return showForum(player);
   if (view === 'search') return showSearch(player);
+  if (view === 'profile') return showProfile(player);
   if (view === 'game') return showGame(player);
   return showGames(player);
 }
