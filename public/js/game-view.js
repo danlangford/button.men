@@ -1,5 +1,5 @@
 import { gameUrl } from './games.js';
-import { buildCapturedHistory, buildReplaySteps } from './game-replay.js';
+import { buildCapturedHistory, buildReplaySteps, formatDieRecipe } from './game-replay.js';
 import { profileUrl } from './links.js';
 
 let disposeDiceScene = () => {};
@@ -21,13 +21,12 @@ function list(value) {
 
 function dieLabel(die) {
   const recipe = value(die, 'recipe', 'originalRecipe') ?? '?';
-  const sides = value(die, 'sides', 'size');
   const rolled = value(die, 'value', 'currentValue', 'roll');
   const skills = list(value(die, 'skillArray', 'skills')).join(', ');
   const statuses = list(value(die, 'statusArray', 'statuses', 'properties'))
     .filter((status) => status !== 'WasJustCaptured')
     .join(', ');
-  return { recipe, sides, rolled, skills, statuses };
+  return { recipe, recipeLabel: formatDieRecipe(die), rolled, skills, statuses };
 }
 
 function renderDie(document, die, captured = false, color = '') {
@@ -46,7 +45,7 @@ function renderDie(document, die, captured = false, color = '') {
   if (roleLabel) card.append(text(document, 'span', roleLabel, 'game-die-replay-label badge'));
   card.append(
     text(document, 'strong', info.rolled ?? '—', 'game-die-value d-block'),
-    text(document, 'span', `d${info.sides || info.recipe}`, 'small'),
+    text(document, 'span', info.recipeLabel, 'small'),
   );
   if (info.skills) card.append(text(document, 'span', info.skills, 'small d-block'));
   if (info.statuses) card.append(text(document, 'small', info.statuses, 'd-block text-body-secondary'));
@@ -69,7 +68,7 @@ function hudDieText(die) {
   const role = { attacker: 'Attacker', target: 'Target', changed: 'Changed' }[die.replayRole];
   return [
     role,
-    `${info.rolled ?? '—'}·d${info.sides || info.recipe}`,
+    `${info.rolled ?? '—'}·${info.recipeLabel}`,
     info.skills && `Skills: ${info.skills}`,
     info.statuses && `Status: ${info.statuses}`,
   ].filter(Boolean).join(' · ');
@@ -390,6 +389,7 @@ export function renderGameView(root, data, replayOptions = {}) {
   root.append(scene, board);
   const renderBoard = () => {
     board.replaceChildren(
+      playerAt(1),
       renderFlatField(
         document,
         viewPlayers,
@@ -399,7 +399,6 @@ export function renderGameView(root, data, replayOptions = {}) {
         current,
         selectedStep.type === 'attack' ? selectedStep : null,
       ),
-      playerAt(1),
       playerAt(0),
     );
     topHud.replaceChildren(hudPlayerAt(1));

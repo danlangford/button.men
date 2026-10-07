@@ -525,11 +525,11 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.ok(status);
   const board = allElements(root).find((element) => element.className === 'game-board');
   assert.equal(board.hidden, true);
-  const flatField = board.children[0];
+  const flatField = board.children.find((element) => element.className === 'game-flat-field');
   assert.equal(flatField.className, 'game-flat-field');
   assert.match(flatField.children[0].textContent, /alice/);
   assert.match(flatField.children[1].textContent, /dan/);
-  assert.match(board.children[1].textContent, /alice/);
+  assert.match(board.children[0].textContent, /alice/);
   assert.match(board.children[2].textContent, /dan/);
   assert.ok(allElements(root).some((element) => element.textContent === 'alice' && element.href === profileUrl('alice')));
   assert.ok(allElements(root).some((element) => element.textContent === 'dan' && element.href === profileUrl('dan')));
@@ -550,8 +550,8 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.equal(hud.length, 2);
   const hudPills = allElements(root).filter((element) => element.className === 'game-hud-pill');
   assert.ok(hudPills.length >= 3);
-  assert.ok(hudPills.some((element) => element.textContent === '4·d6 · Skills: Poison · Status: attacker'));
-  assert.ok(hudPills.some((element) => element.textContent === '3·d4'));
+  assert.ok(hudPills.some((element) => element.textContent === '4·p6 · Skills: Poison · Status: attacker'));
+  assert.ok(hudPills.some((element) => element.textContent === '3·4'));
   assert.match(hud.map((element) => element.textContent).join(' '), /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
   assert.match(hud.map((element) => element.textContent).join(' '), /Status: attacker/);
   assert.ok(allElements(root).some((element) => element.getAttribute('aria-label') === 'Zoom in'));

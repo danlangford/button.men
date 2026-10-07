@@ -3,9 +3,18 @@ import { test } from 'node:test';
 import {
   buildCapturedHistory,
   buildReplaySteps,
+  formatDieRecipe,
   parseAttackMessage,
   parseDieNotation,
 } from '../public/js/game-replay.js';
+
+test('game replay formats compact ButtonWeavers die recipes without a generic d prefix', () => {
+  assert.equal(formatDieRecipe({ recipe: 12 }), '12');
+  assert.equal(formatDieRecipe({ recipe: 12, skillArray: ['Poison'] }), 'p12');
+  assert.equal(formatDieRecipe({ recipe: 12, skillArray: ['Stealth'] }), 'd12');
+  assert.equal(formatDieRecipe({ recipe: 'p(12)' }), 'p12');
+  assert.equal(formatDieRecipe({ recipe: 'V=6' }), 'V=6');
+});
 
 test('game replay parser reads standard, skill, and swing die notation', () => {
   assert.deepEqual(parseDieNotation('(4):1'), {
@@ -174,7 +183,7 @@ test('game replay recognizes transformed defenders that reroll before capture', 
   assert.equal(steps[1].players[0].capturedDieArray[0].replayRole, 'changed');
 });
 
-test('game replay begins after the previous round boundary', () => {
+test('game replay crosses the previous round boundary', () => {
   const players = [
     { playerName: 'alice', activeDieArray: [{ recipe: 6, value: 3 }] },
     { playerName: 'bob', activeDieArray: [{ recipe: 8, value: 4 }] },
@@ -185,8 +194,9 @@ test('game replay begins after the previous round boundary', () => {
     { timestamp: 3, player: 'alice', message: 'alice performed Skill attack using [(6):3] against [(8):4]' },
   ], players, 2);
 
-  assert.deepEqual(steps.map((step) => step.type), ['attack', 'result', 'current']);
-  assert.equal(steps[0].timestamp, 3);
+  assert.deepEqual(steps.map((step) => step.type), ['attack', 'result', 'event', 'attack', 'result', 'current']);
+  assert.equal(steps[0].timestamp, 1);
+  assert.equal(steps[3].timestamp, 3);
 });
 
 test('game replay reconstructs earlier rounds from their initial rolls', () => {
@@ -228,6 +238,20 @@ test('game replay reconstructs earlier rounds from their initial rolls', () => {
   assert.equal(steps[3].players[0].capturedDieArray[0].value, 4);
   assert.equal(steps[4].players[0].capturedDieArray.length, 0);
   assert.equal(steps[4].players[1].capturedDieArray.length, 0);
+});
+
+test('game replay exposes every completed round when initial rolls are missing or malformed', () => {
+  const players = [
+    { playerName: 'alice', activeDieArray: [{ recipe: 6, value: 3 }] },
+    { playerName: 'bob', activeDieArray: [{ recipe: 8, value: 4 }] },
+  ];
+  const steps = buildReplaySteps([
+    { timestamp: 1, player: 'alice', message: 'End of round: alice won round 1 (8 vs. 0)' },
+    { timestamp: 2, player: '', message: 'bob won initiative for round 2. Initial die values: alice rolled [unparseable], bob rolled [(8):4].' },
+    { timestamp: 3, player: '', message: 'Round 2 ended in a draw (4 vs. 4)' },
+  ], players, 3);
+
+  assert.deepEqual([...new Set(steps.map((step) => step.roundNumber))], [1, 2, 3]);
 });
 
 test('capture history resets at the start of each round', () => {

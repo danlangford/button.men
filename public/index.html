@@ -102,11 +102,10 @@
     .game-die-replay-attacker .game-die-replay-label { color: #fff; background: #a64b00; }
     .game-die-replay-target .game-die-replay-label { color: #fff; background: #006b84; }
     .game-die-replay-changed .game-die-replay-label { color: #fff; background: #776000; }
-    .game-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .game-board { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
     .game-flat-field {
-      grid-column: 1 / -1;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1fr);
       gap: .75rem;
       padding: .75rem;
       border: 1px solid #70472d;

@@ -37,6 +37,18 @@ const skillNames = {
 
 const list = (value) => Array.isArray(value) ? value : [];
 
+const skillCodes = Object.fromEntries(Object.entries(skillNames).map(([code, name]) => [name, code]));
+
+export function formatDieRecipe(die) {
+  const rawRecipe = die?.recipe ?? die?.originalRecipe ?? die?.sides ?? die?.size ?? '?';
+  const recipe = String(rawRecipe);
+  if (/^\d+$/.test(recipe)) {
+    const codes = list(die?.skillArray ?? die?.skills).map((skill) => skillCodes[skill]).filter(Boolean).join('');
+    return `${codes}${recipe}`;
+  }
+  return recipe.replace(/\((\d+)\)/g, '$1');
+}
+
 function parsedSkills(recipe) {
   const prefix = recipe.split('(')[0].replace(/=[\d/]+$/, '');
   return [...prefix].map((code) => skillNames[code]).filter(Boolean);
@@ -333,11 +345,20 @@ function initialRoundPlayers(entry, currentPlayers) {
     const escapedName = String(player.playerName || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const match = message.match(new RegExp(`${escapedName} rolled \\[([^\\]]*)\\]`, 'i'));
     const dice = match ? parseDice(match[1]) : null;
-    if (!dice) return null;
-    player.activeDieArray = dice.map((die) => ({ ...die, properties: [] }));
+    if (dice) player.activeDieArray = dice.map((die) => ({ ...die, properties: [] }));
     player.capturedDieArray = [];
     player.outOfPlayDieArray = [];
   }
+  return players;
+}
+
+function resetRoundPlayers(currentPlayers) {
+  const players = clonePlayers(currentPlayers);
+  players.forEach((player) => {
+    player.activeDieArray = [];
+    player.capturedDieArray = [];
+    player.outOfPlayDieArray = [];
+  });
   return players;
 }
 
@@ -364,18 +385,26 @@ function buildRoundForward(entries, initialPlayers, roundNumber) {
 
     const beforePlayers = clonePlayers(state);
     clearReplayRoles(beforePlayers);
-    markDice(beforePlayers[playerIndex], entry.attack.attackers, 'attacker');
-    markDice(beforePlayers[targetIndex], entry.attack.targets, 'target');
+    const results = loggedAttackResults(entry.message);
+    const captured = capturedTargets(entry.attack, results.captures);
+    const attackers = restoreDice(beforePlayers[playerIndex], entry.attack.attackers);
+    const targets = restoreTargetDice(
+      beforePlayers[playerIndex],
+      beforePlayers[targetIndex],
+      entry.attack.targets,
+      captured,
+      results,
+    );
+    attackers.forEach((die) => { die.replayRole = 'attacker'; });
+    targets.forEach((die) => { die.replayRole = 'target'; });
     steps.push({
       type: 'attack', player: entry.player, playerIndex, targetIndex,
       attackType: entry.attack.attackType, message: entry.message,
       timestamp: entry.timestamp, logIndex: entry.originalIndex, players: beforePlayers, roundNumber,
     });
 
-    const afterPlayers = clonePlayers(state);
+    const afterPlayers = clonePlayers(beforePlayers);
     clearReplayRoles(afterPlayers);
-    const results = loggedAttackResults(entry.message);
-    const captured = capturedTargets(entry.attack, results.captures);
     const capturedDice = applyAttackResult(afterPlayers, playerIndex, targetIndex, entry.attack, results, captured);
     markDice(afterPlayers[playerIndex], entry.attack.attackers, 'changed');
     markDice(afterPlayers[targetIndex], entry.attack.targets, 'changed');
@@ -405,10 +434,8 @@ export function buildReplaySteps(actionLog, currentPlayers, roundNumber) {
   for (const segment of completedRoundSegments(earlierEntries)) {
     const initial = segment.entries
       .map((entry) => initialRoundPlayers(entry, currentPlayers))
-      .find(Boolean);
-    if (initial) {
-      earlierSteps.push(...buildRoundForward(segment.entries, initial, segment.roundNumber));
-    }
+      .find(Boolean) || resetRoundPlayers(currentPlayers);
+    earlierSteps.push(...buildRoundForward(segment.entries, initial, segment.roundNumber));
   }
 
   let state = clonePlayers(currentPlayers);

@@ -154,8 +154,16 @@ test('replay links select a step and invalid steps fall back to the current game
   await expect(page.locator('.game-flat-captured-pile')).toContainText('Captured by alice');
   await expect(page.locator('.game-flat-captured-dice .game-die-replay-changed')).toBeVisible();
   const capturedPile = await page.locator('.game-flat-captured-pile').boundingBox();
-  const activeDice = await page.locator('.game-flat-active-dice').first().boundingBox();
+  const activeDice = await page.locator('.game-flat-side:has(.game-flat-captured-pile) .game-flat-active-dice').boundingBox();
   expect(capturedPile.x).toBeGreaterThanOrEqual(activeDice.x + activeDice.width - 1);
+  const opponentInfo = await page.locator('.game-player-1').boundingBox();
+  const flatField = await page.locator('.game-flat-field').boundingBox();
+  const playerInfo = await page.locator('.game-player-0').boundingBox();
+  const flatSides = await page.locator('.game-flat-side').evaluateAll((sides) =>
+    sides.map((side) => side.getBoundingClientRect().top));
+  expect(opponentInfo.y + opponentInfo.height).toBeLessThanOrEqual(flatField.y + 1);
+  expect(flatSides[0]).toBeLessThan(flatSides[1]);
+  expect(playerInfo.y).toBeGreaterThanOrEqual(flatField.y + flatField.height - 1);
   await page.getByRole('button', { name: 'Show 3D game view' }).click();
   await expect(scene).toHaveAttribute('data-zoom', '1.25');
   await expect(page).toHaveURL(/#game\?gameId=22&timestamp=1&phase=result$/);

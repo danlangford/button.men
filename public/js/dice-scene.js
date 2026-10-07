@@ -1,4 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js';
+import { formatDieRecipe } from './game-replay.js';
 
 const dieList = (player, playerIndex) => [
   ...(player.activeDieArray || []),
@@ -33,7 +34,7 @@ function geometryFor(size) {
   }
 }
 
-function dieLabel(die, size) {
+function dieLabel(die) {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 128;
@@ -62,7 +63,7 @@ function dieLabel(die, size) {
     context.stroke();
   }
   context.font = '24px sans-serif';
-  context.fillText(`d${size}`, 128, 108);
+  context.fillText(formatDieRecipe(die), 128, 108);
   const texture = new THREE.CanvasTexture(canvas);
   const material = new THREE.SpriteMaterial({ map: texture, depthTest: false });
   const label = new THREE.Sprite(material);
@@ -90,7 +91,7 @@ function makeDie(die, color) {
   mesh.userData.dieInfo = die;
   if (die.replayRole === 'attacker') mesh.scale.setScalar(1.22);
   if (die.replayRole === 'target') mesh.scale.setScalar(1.14);
-  mesh.add(dieLabel(die, size));
+  mesh.add(dieLabel(die));
   return mesh;
 }
 
