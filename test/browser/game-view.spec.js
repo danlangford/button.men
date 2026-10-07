@@ -83,3 +83,105 @@ test('mobile orientations keep both HUDs visible outside the dice area', async (
   })));
   expect(overflow.every(({ scrollHeight, clientHeight }) => scrollHeight <= clientHeight + 1)).toBeTruthy();
 });
+
+test('replay links select a step and invalid steps fall back to the current game', async ({ page }) => {
+  const game = {
+    gameId: 22,
+    gameState: 'ACTIVE',
+    currentPlayerIdx: 0,
+    activePlayerIdx: 0,
+    playerDataArray: [
+      {
+        playerName: 'alice',
+        playerColor: '#dd99dd',
+        activeDieArray: [{ recipe: 'z(8)', sides: 8, value: 3, skillArray: ['Speed'] }],
+        capturedDieArray: [{ recipe: 6, sides: 6, value: 4, properties: ['WasJustCaptured'] }],
+      },
+      { playerName: 'bob', playerColor: '#ddffdd', activeDieArray: [{ recipe: 6, value: 4 }] },
+    ],
+    gameActionLog: [{
+      timestamp: 1,
+      player: 'alice',
+      message: 'alice performed Skill attack using [z(8):2] against [(6):4]; Defender (6) was captured; Attacker z(8) rerolled 2 => 3',
+    }, {
+      timestamp: 2,
+      player: 'bob',
+      message: 'bob passed',
+    }, {
+      timestamp: 3,
+      player: 'alice',
+      message: 'alice set swing values: V=6',
+    }],
+  };
+  await page.route('**/js/dice-scene.js', (route) => route.fulfill({
+    contentType: 'text/javascript',
+    body: 'export function renderDiceScene(container, players, bottom, options) { container.dataset.attackType = options.attackType || ""; container.dataset.zoom = String(options.zoom); container.dataset.neutralOpponentColor = options.neutralOpponentColor; return { dispose() {}, setBottomPlayerIndex() {}, setZoom(value) { container.dataset.zoom = String(value); } }; }',
+  }));
+  await page.route('**/api/responder', async (route) => {
+    const request = JSON.parse(route.request().postData());
+    const response = request.type === 'loadPlayerName'
+      ? { status: 'ok', data: { userName: 'alice' } }
+      : request.type === 'loadGameData'
+        ? { status: 'ok', data: game }
+        : request.type === 'loadPlayerInfo'
+          ? { status: 'ok', data: { user_prefs: { neutral_color_a: '#cccccc', neutral_color_b: '#dddddd' } } }
+        : { status: 'failed', message: 'Unexpected API request.' };
+    await route.fulfill({ json: response });
+  });
+
+  await page.goto('/#game?gameId=22&timestamp=1');
+  await expect(page.getByText('History · alice used Skill attack against bob')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Take action on buttonweavers.com' })).toBeHidden();
+  await expect(page.getByRole('link', { name: 'Link to this step' })).toHaveAttribute('href', /#game\?gameId=22&replay=.+-attack/);
+  await expect(page.locator('.game-3d-hud .game-hud-pill').filter({ hasText: 'Attacker' })).toBeVisible();
+  await expect(page.getByText('Attack direction: attackers → targets.')).toHaveCount(0);
+  const scene = page.locator('.game-3d-board');
+  await expect(scene).toHaveAttribute('data-attack-type', 'Skill');
+  await expect(scene).toHaveAttribute('data-neutral-opponent-color', '#dddddd');
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(scene).toHaveAttribute('data-zoom', '1.25');
+  await expect(page.locator('.game-event-current-step')).toContainText('alice performed Skill attack');
+  await expect(page.getByText('bob passed')).toBeVisible();
+  await expect(page.getByText('alice set swing values: V=6')).toBeVisible();
+  await page.locator('.game-event-action').filter({ hasText: 'bob passed' }).click();
+  await expect(page.getByText(/History · bob passed/)).toBeVisible();
+  await expect(page).toHaveURL(/#game\?gameId=22&replay=.+-event$/);
+  await page.locator('.game-event-action').filter({ hasText: 'alice performed Skill attack' }).click();
+  await expect(page.getByText('History · alice used Skill attack against bob')).toBeVisible();
+  await page.getByRole('button', { name: 'Chat', exact: true }).click();
+  await expect(page.locator('.game-event-current-step')).toContainText('alice performed Skill attack');
+  await page.getByRole('button', { name: 'Show flat game state' }).click();
+  await expect(page.locator('.game-die-replay-attacker')).toBeVisible();
+  await expect(page.locator('.game-die-replay-target')).toBeVisible();
+  await expect(page.locator('.game-flat-attack-direction')).toContainText('alice → bob · Skill attack');
+  await expect(page.locator('.game-flat-captured-pile')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Next step' }).click();
+  await expect(page.locator('.game-flat-captured-pile')).toContainText('Captured by alice');
+  await expect(page.locator('.game-flat-captured-dice .game-die-replay-changed')).toBeVisible();
+  const capturedPile = await page.locator('.game-flat-captured-pile').boundingBox();
+  const activeDice = await page.locator('.game-flat-side:has(.game-flat-captured-pile) .game-flat-active-dice').boundingBox();
+  expect(capturedPile.x).toBeGreaterThanOrEqual(activeDice.x + activeDice.width - 1);
+  const opponentInfo = await page.locator('.game-player-1').boundingBox();
+  const flatField = await page.locator('.game-flat-field').boundingBox();
+  const playerInfo = await page.locator('.game-player-0').boundingBox();
+  const flatSides = await page.locator('.game-flat-side').evaluateAll((sides) =>
+    sides.map((side) => side.getBoundingClientRect().top));
+  expect(opponentInfo.y + opponentInfo.height).toBeLessThanOrEqual(flatField.y + 1);
+  expect(flatSides[0]).toBeLessThan(flatSides[1]);
+  expect(playerInfo.y).toBeGreaterThanOrEqual(flatField.y + flatField.height - 1);
+  await page.getByRole('button', { name: 'Show 3D game view' }).click();
+  await expect(scene).toHaveAttribute('data-zoom', '1.25');
+  await expect(page).toHaveURL(/#game\?gameId=22&replay=.+-result$/);
+  await page.getByRole('button', { name: 'Next step' }).click();
+  await page.getByRole('button', { name: 'Next step' }).click();
+  await page.getByRole('button', { name: 'Next step' }).click();
+  await expect(page.getByText('Current game state.')).toBeVisible();
+  await expect(page).toHaveURL(/#game\?gameId=22$/);
+
+  await page.goto('/#game?gameId=22&timestamp=999');
+  await expect(page.getByText('Replay step not found; showing the current game state.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Take action on buttonweavers.com' })).toBeVisible();
+
+  await page.goto('/#game?gameId=22');
+  await expect(page.getByText('Current game state.')).toBeVisible();
+});

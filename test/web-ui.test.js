@@ -486,6 +486,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
     playerDataArray: [
       {
         playerName: 'alice',
+        playerColor: '#112233',
         button: { name: 'Avis', recipe: '1234' },
         roundScore: 2,
         sideScore: 3,
@@ -499,6 +500,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
       },
       {
         playerName: 'dan',
+        playerColor: '#445566',
         button: { name: 'Bauer', recipe: '6789' },
         roundScore: 1,
         sideScore: 4,
@@ -508,7 +510,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
     ],
     gameActionLog: [{ timestamp: 2, player: 'alice', message: 'attacked' }],
     gameChatLog: [{ timestamp: 1, player: 'dan', message: 'hello' }],
-  });
+  }, { colorPreferences: { neutral_color_a: '#aabbcc', neutral_color_b: '#ddeeff' } });
   assert.match(root.textContent, /alice/);
   assert.match(root.textContent, /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
   assert.match(root.textContent, /Poison/);
@@ -518,21 +520,28 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.doesNotMatch(root.textContent, /small d-block text-body-secondary/);
   const canvas = allElements(root).find((element) => element.className === 'game-3d-board');
   assert.ok(canvas);
-  assert.equal(canvas.getAttribute('aria-hidden'), 'true');
+  assert.equal(canvas.getAttribute('aria-hidden'), null);
   const status = allElements(root).find((element) => element.tagName === 'small' && element.textContent === 'attacker');
   assert.ok(status);
   const board = allElements(root).find((element) => element.className === 'game-board');
   assert.equal(board.hidden, true);
+  const flatField = board.children.find((element) => element.className === 'game-flat-field');
+  assert.equal(flatField.className, 'game-flat-field');
+  assert.match(flatField.children[0].textContent, /alice/);
+  assert.match(flatField.children[1].textContent, /dan/);
   assert.match(board.children[0].textContent, /alice/);
-  assert.match(board.children[1].textContent, /dan/);
+  assert.match(board.children[2].textContent, /dan/);
   assert.ok(allElements(root).some((element) => element.textContent === 'alice' && element.href === profileUrl('alice')));
   assert.ok(allElements(root).some((element) => element.textContent === 'dan' && element.href === profileUrl('dan')));
-  const aliceDice = board.children[0].children.find((element) => element.className?.startsWith('game-dice '));
-  assert.equal(aliceDice.children.length, 2);
-  const recentlyCaptured = aliceDice.children.find((element) => element.className.includes('game-die-captured'));
+  const aliceDice = flatField.children[0];
+  const capturePile = aliceDice.children.find((element) => element.className === 'game-flat-captured-pile');
+  const capturedDice = capturePile.children.find((element) => element.className === 'game-flat-captured-dice');
+  assert.equal(capturedDice.children.length, 2);
+  const recentlyCaptured = capturedDice.children.find((element) => element.textContent.includes('3'));
   assert.match(recentlyCaptured.textContent, /3/);
   assert.equal(recentlyCaptured.getAttribute('aria-disabled'), 'true');
-  assert.doesNotMatch(aliceDice.textContent, /1/);
+  assert.equal(recentlyCaptured.style.borderTopColor, '#aabbcc');
+  assert.match(capturedDice.textContent, /1/);
   const playArea = allElements(root).find((element) => element.className === 'game-play-area');
   assert.equal(playArea.children[0].className, 'game-3d-hud game-3d-hud-top');
   assert.equal(playArea.children[1], canvas);
@@ -541,10 +550,11 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.equal(hud.length, 2);
   const hudPills = allElements(root).filter((element) => element.className === 'game-hud-pill');
   assert.ok(hudPills.length >= 3);
-  assert.ok(hudPills.some((element) => element.textContent === '4·d6 · Skills: Poison · Status: attacker'));
-  assert.ok(hudPills.some((element) => element.textContent === '3·d4'));
+  assert.ok(hudPills.some((element) => element.textContent === '4·p6 · Skills: Poison · Status: attacker'));
+  assert.ok(hudPills.some((element) => element.textContent === '3·4'));
   assert.match(hud.map((element) => element.textContent).join(' '), /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
   assert.match(hud.map((element) => element.textContent).join(' '), /Status: attacker/);
+  assert.ok(allElements(root).some((element) => element.getAttribute('aria-label') === 'Zoom in'));
   const toggle = allElements(root).find((element) => element.textContent === 'Show flat game state');
   toggle.onclick();
   assert.equal(allElements(root).find((element) => element.className === 'game-play-area').hidden, true);
@@ -556,8 +566,9 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   const flip = allElements(root).find((element) => element.textContent === 'Flip orientation');
   assert.ok(flip);
   flip.onclick();
-  assert.match(board.children[0].textContent, /dan/);
-  assert.match(board.children[1].textContent, /alice/);
+  assert.match(board.children[0].children[0].textContent, /dan/);
+  assert.match(board.children[1].textContent, /dan/);
+  assert.match(board.children[2].textContent, /alice/);
   const all = allElements(root).find((element) => element.textContent === 'Chat & Game Log');
   assert.ok(all);
   all.onclick();
@@ -567,6 +578,144 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.match(events[1].textContent, /hello/);
   assert.ok(allElements(root).some((element) => element.textContent === 'Chat'));
   assert.ok(allElements(root).some((element) => element.textContent === 'Game Log'));
+});
+
+test('web-ui: Game replay - steps backward and forward and hides external actions in history', () => {
+  const document = fakeDocument();
+  const root = document.createElement('main');
+  renderGameView(root, {
+    gameId: 22,
+    gameState: 'ACTIVE',
+    currentPlayerIdx: 0,
+    activePlayerIdx: 0,
+    playerDataArray: [
+      { playerName: 'alice', activeDieArray: [{ recipe: 'z(8)', sides: 8, value: 3, skillArray: ['Speed'] }] },
+      { playerName: 'bob', activeDieArray: [{ recipe: 6, value: 4 }] },
+    ],
+    gameActionLog: [{
+      timestamp: 1,
+      player: 'alice',
+      message: 'alice performed Skill attack using [z(8):2] against [(6):4]; Defender (6) was captured; Attacker z(8) rerolled 2 => 3',
+    }],
+  });
+  const elements = () => allElements(root);
+  const previous = elements().find((element) => element.textContent === 'Previous step');
+  const next = elements().find((element) => element.textContent === 'Next step');
+  const current = elements().find((element) => element.textContent === 'Return to current game');
+  const action = elements().find((element) => element.textContent === 'Take action on buttonweavers.com');
+  const status = elements().find((element) => element.className === 'small text-body-secondary mb-1');
+
+  assert.equal(previous.disabled, false);
+  assert.equal(next.disabled, true);
+  assert.equal(action.hidden, false);
+  previous.onclick();
+  assert.equal(action.hidden, true);
+  assert.match(status.textContent, /Attack result/);
+  next.onclick();
+  assert.match(status.textContent, /Current game state/);
+  assert.equal(action.hidden, false);
+  previous.onclick();
+  previous.onclick();
+  assert.equal(previous.disabled, true);
+  assert.match(status.textContent, /Skill attack/);
+  assert.equal(action.hidden, true);
+  assert.ok(elements().some((element) => String(element.className || '').includes('game-die-replay-attacker') &&
+    element.textContent.includes('Attacker')));
+  assert.ok(elements().some((element) => String(element.className || '').includes('game-die-replay-target') &&
+    element.textContent.includes('Target')));
+  assert.ok(elements().some((element) => element.className === 'game-hud-pill' &&
+    element.textContent.startsWith('Attacker ·')));
+  current.onclick();
+  assert.equal(next.disabled, true);
+  assert.equal(action.hidden, false);
+
+  const linkedRoot = document.createElement('main');
+  renderGameView(linkedRoot, {
+    gameId: 22,
+    playerDataArray: [
+      { playerName: 'alice', activeDieArray: [{ recipe: 'z(8)', sides: 8, value: 3, skillArray: ['Speed'] }] },
+      { playerName: 'bob', activeDieArray: [{ recipe: 6, value: 4 }] },
+    ],
+    gameActionLog: [{
+      timestamp: 1,
+      player: 'alice',
+      message: 'alice performed Skill attack using [z(8):2] against [(6):4]; Defender (6) was captured; Attacker z(8) rerolled 2 => 3',
+    }],
+  }, { timestamp: '1' });
+  const linkedElements = allElements(linkedRoot);
+  assert.match(linkedElements.find((element) => element.className === 'small text-body-secondary mb-1').textContent, /Skill attack/);
+  assert.equal(linkedElements.find((element) => element.textContent === 'Take action on buttonweavers.com').hidden, true);
+  assert.match(linkedElements.find((element) => element.textContent === 'Link to this step').href, /^#game\?gameId=22&replay=.+-attack$/);
+
+  const resultRoot = document.createElement('main');
+  renderGameView(resultRoot, {
+    gameId: 22,
+    playerDataArray: [
+      { playerName: 'alice', activeDieArray: [{ recipe: 'z(8)', sides: 8, value: 3, skillArray: ['Speed'] }] },
+      { playerName: 'bob', activeDieArray: [{ recipe: 6, value: 4 }] },
+    ],
+    gameActionLog: [{
+      timestamp: 1,
+      player: 'alice',
+      message: 'alice performed Skill attack using [z(8):2] against [(6):4]; Defender (6) was captured; Attacker z(8) rerolled 2 => 3',
+    }],
+  }, { timestamp: '1', phase: 'result' });
+  const resultElements = allElements(resultRoot);
+  assert.match(resultElements.find((element) => element.className === 'small text-body-secondary mb-1').textContent, /Attack result/);
+  assert.match(resultElements.find((element) => element.textContent === 'Link to this step').href, /^#game\?gameId=22&replay=.+-result$/);
+
+  const invalidRoot = document.createElement('main');
+  renderGameView(invalidRoot, {
+    gameId: 22,
+    playerDataArray: [{ playerName: 'alice' }, { playerName: 'bob' }],
+    gameActionLog: [],
+  }, { timestamp: '8' });
+  assert.match(allElements(invalidRoot).find((element) => element.className === 'small text-body-secondary mb-1').textContent, /step not found/);
+
+  const roundsRoot = document.createElement('main');
+  renderGameView(roundsRoot, {
+    gameId: 22,
+    roundNumber: 2,
+    playerDataArray: [
+      { playerName: 'alice', activeDieArray: [{ recipe: 6, value: 3 }], capturedDieArray: [] },
+      { playerName: 'bob', activeDieArray: [{ recipe: 8, value: 6 }], capturedDieArray: [] },
+    ],
+    gameActionLog: [
+      { timestamp: 1, player: '', message: 'alice won initiative for round 1. Initial die values: alice rolled [(6):2], bob rolled [(8):4].' },
+      { timestamp: 2, player: 'alice', message: 'alice performed Power attack using [(6):2] against [(8):4]. End of round: alice won round 1 (8 vs. 0)' },
+      { timestamp: 3, player: '', message: 'bob won initiative for round 2. Initial die values: alice rolled [(6):3], bob rolled [(8):6].' },
+    ],
+  });
+  const roundsElements = allElements(roundsRoot);
+  const roundSelect = roundsElements.find((element) => element.attributes?.['aria-label'] === 'Replay round');
+  assert.ok(roundSelect);
+  assert.deepEqual(roundSelect.children.map((option) => option.textContent), ['Round 1', 'Round 2']);
+  roundSelect.value = '1';
+  roundSelect.onchange();
+  assert.match(roundsElements.find((element) => element.className === 'small text-body-secondary mb-1').textContent, /Round 1/);
+});
+
+test('web-ui: Game log rows jump directly to their replay entries', () => {
+  const document = fakeDocument();
+  const root = document.createElement('main');
+  renderGameView(root, {
+    gameId: 22,
+    roundNumber: 1,
+    playerDataArray: [{ playerName: 'alice' }, { playerName: 'bob' }],
+    gameActionLog: [
+      { timestamp: 1, player: 'alice', message: 'alice passed' },
+      { timestamp: 2, player: 'bob', message: 'bob passed' },
+    ],
+  });
+  const elements = () => allElements(root);
+  elements().find((element) => element.textContent === 'Game Log').onclick();
+  const aliceRow = elements().find((element) =>
+    String(element.className || '').includes('game-event-action') && element.textContent.includes('alice passed'));
+
+  assert.equal(aliceRow.attributes.role, 'button');
+  aliceRow.onclick({ target: aliceRow });
+  assert.match(elements().find((element) => element.className === 'small text-body-secondary mb-1').textContent, /alice passed/);
+  assert.match(elements().find((element) => element.textContent === 'Link to this step').href, /&replay=.+-event$/);
 });
 
 test('web-ui: Reach game search - one search link and nav wiring reach the search view', () => {

@@ -39,6 +39,16 @@
       overflow: hidden;
     }
     .game-3d-board canvas { display: block; width: 100%; height: 100%; }
+    .game-3d-zoom-controls {
+      position: absolute;
+      z-index: 3;
+      top: .5rem;
+      right: .5rem;
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+    }
+    .game-3d-zoom-label { min-width: 2.5rem; color: #fff; text-align: center; font-weight: 700; }
     .game-3d-hud {
       display: block;
       z-index: 1;
@@ -84,6 +94,50 @@
     }
     .game-die-captured { opacity: .45; filter: grayscale(1); }
     .game-die-captured .game-die-value { text-decoration: line-through; }
+    .game-die-replay-attacker { border: 3px solid #a64b00 !important; }
+    .game-die-replay-target { border: 3px dashed #006b84 !important; }
+    .game-die-replay-changed { border: 3px double #776000 !important; }
+    .game-die-replay-label { display: block; margin-bottom: .25rem; }
+    .game-die-replay-attacker, .game-die-replay-target { position: relative; z-index: 1; transform: scale(1.08); }
+    .game-die-replay-attacker .game-die-replay-label { color: #fff; background: #a64b00; }
+    .game-die-replay-target .game-die-replay-label { color: #fff; background: #006b84; }
+    .game-die-replay-changed .game-die-replay-label { color: #fff; background: #776000; }
+    .game-board { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+    .game-flat-field {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: .75rem;
+      padding: .75rem;
+      border: 1px solid #70472d;
+      border-radius: .75rem;
+      background: #31564c;
+    }
+    .game-flat-side {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      min-width: 0;
+      color: #fff;
+    }
+    .game-flat-side > h2 { grid-column: 1 / -1; }
+    .game-flat-active-dice,
+    .game-flat-captured-dice { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .5rem; }
+    .game-flat-captured-pile {
+      max-width: 8rem;
+      padding-left: .5rem;
+      border-left: 1px solid rgb(255 255 255 / 30%);
+    }
+    .game-flat-attack-direction {
+      grid-column: 1 / -1;
+      margin: 0;
+      color: #ffe07a;
+      font-size: 1.25rem;
+      font-weight: 800;
+      text-align: center;
+    }
+    .game-board > .game-player { min-width: 0; }
+    .game-event-current-step { border-left: .35rem solid #806600; background: #fff3cd; font-weight: 600; }
+    .game-event-action[role="button"] { cursor: pointer; }
+    .game-event-action[role="button"]:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
     @media (max-width: 575.98px) {
       main { min-width: 0; overflow-wrap: anywhere; }
       .navbar-controls {
@@ -95,7 +149,10 @@
         flex-basis: 100%;
         overflow-wrap: anywhere;
       }
-      .game-board { display: grid; gap: 1rem; }
+      .game-flat-field { gap: .35rem; padding: .4rem; }
+      .game-flat-side h2 { font-size: .95rem; }
+      .game-flat-captured-pile { max-width: 5rem; padding-left: .3rem; }
+      .game-flat-active-dice, .game-flat-captured-dice { gap: .3rem; }
       .game-player { min-width: 0; }
       .game-die { min-width: 4rem; overflow-wrap: anywhere; }
       .game-die-value { font-size: 1.5rem; }
