@@ -1,0 +1,27 @@
+[
+  {
+    "timestamp": 1700000004,
+    "player": "opponent",
+    "message": "opponent passed"
+  },
+  {
+    "timestamp": 1700000003,
+    "player": "opponent",
+    "message": "opponent performed Power attack using [(10):7] against [(8):7]; Defender (8) was captured"
+  },
+  {
+    "timestamp": 1700000002,
+    "player": "player",
+    "message": "player passed"
+  },
+  {
+    "timestamp": 1700000001,
+    "player": "player",
+    "message": "player performed Skill attack using [p(12):5] against [(6):4]; Defender (6) was captured; Attacker p(12) rerolled 5 => 8"
+  },
+  {
+    "timestamp": 1700000000,
+    "player": "",
+    "message": "player won initiative for round 1. Initial die values: player rolled [p(12):5,(8):7], opponent rolled [(6):4,(10):7]."
+  }
+]

@@ -645,7 +645,7 @@ test('web-ui: Game replay - steps backward and forward and hides external action
   const linkedElements = allElements(linkedRoot);
   assert.match(linkedElements.find((element) => element.className === 'small text-body-secondary mb-1').textContent, /Skill attack/);
   assert.equal(linkedElements.find((element) => element.textContent === 'Take action on buttonweavers.com').hidden, true);
-  assert.equal(linkedElements.find((element) => element.textContent === 'Link to this step').href, '#game?gameId=22&timestamp=1');
+  assert.match(linkedElements.find((element) => element.textContent === 'Link to this step').href, /^#game\?gameId=22&replay=.+-attack$/);
 
   const resultRoot = document.createElement('main');
   renderGameView(resultRoot, {
@@ -662,7 +662,7 @@ test('web-ui: Game replay - steps backward and forward and hides external action
   }, { timestamp: '1', phase: 'result' });
   const resultElements = allElements(resultRoot);
   assert.match(resultElements.find((element) => element.className === 'small text-body-secondary mb-1').textContent, /Attack result/);
-  assert.equal(resultElements.find((element) => element.textContent === 'Link to this step').href, '#game?gameId=22&timestamp=1&phase=result');
+  assert.match(resultElements.find((element) => element.textContent === 'Link to this step').href, /^#game\?gameId=22&replay=.+-result$/);
 
   const invalidRoot = document.createElement('main');
   renderGameView(invalidRoot, {
@@ -693,6 +693,29 @@ test('web-ui: Game replay - steps backward and forward and hides external action
   roundSelect.value = '1';
   roundSelect.onchange();
   assert.match(roundsElements.find((element) => element.className === 'small text-body-secondary mb-1').textContent, /Round 1/);
+});
+
+test('web-ui: Game log rows jump directly to their replay entries', () => {
+  const document = fakeDocument();
+  const root = document.createElement('main');
+  renderGameView(root, {
+    gameId: 22,
+    roundNumber: 1,
+    playerDataArray: [{ playerName: 'alice' }, { playerName: 'bob' }],
+    gameActionLog: [
+      { timestamp: 1, player: 'alice', message: 'alice passed' },
+      { timestamp: 2, player: 'bob', message: 'bob passed' },
+    ],
+  });
+  const elements = () => allElements(root);
+  elements().find((element) => element.textContent === 'Game Log').onclick();
+  const aliceRow = elements().find((element) =>
+    String(element.className || '').includes('game-event-action') && element.textContent.includes('alice passed'));
+
+  assert.equal(aliceRow.attributes.role, 'button');
+  aliceRow.onclick({ target: aliceRow });
+  assert.match(elements().find((element) => element.className === 'small text-body-secondary mb-1').textContent, /alice passed/);
+  assert.match(elements().find((element) => element.textContent === 'Link to this step').href, /&replay=.+-event$/);
 });
 
 test('web-ui: Reach game search - one search link and nav wiring reach the search view', () => {

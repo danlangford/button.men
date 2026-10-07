@@ -178,7 +178,7 @@ function entry(data, type) {
   }));
 }
 
-function renderActivity(document, root, data, privateChat) {
+function renderActivity(document, root, data, privateChat, selectLogEntry = () => {}) {
   const controls = text(document, 'div', '', 'btn-group mb-3');
   const stream = text(document, 'div', '', 'game-activity');
   const entries = [...entry(data.gameActionLog, 'action'), ...entry(data.gameChatLog, 'chat')]
@@ -200,7 +200,20 @@ function renderActivity(document, root, data, privateChat) {
         '',
         `game-event game-event-${item.type} border-bottom py-2${selected ? ' game-event-current-step' : ''}`,
       );
-      if (item.type === 'action') row.setAttribute('aria-current', selected ? 'step' : 'false');
+      if (item.type === 'action') {
+        row.setAttribute('aria-current', selected ? 'step' : 'false');
+        row.setAttribute('role', 'button');
+        row.setAttribute('tabindex', '0');
+        row.addEventListener('click', (event) => {
+          if (event.target?.tagName === 'A') return;
+          selectLogEntry(item.logIndex);
+        });
+        row.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          selectLogEntry(item.logIndex);
+        });
+      }
       const author = text(document, item.player ? 'a' : 'strong', item.player || (item.type === 'chat' ? 'Chat' : 'Game'));
       if (item.player) author.href = profileUrl(item.player);
       row.append(author, text(document, 'span', ` · ${item.message}`));
@@ -252,14 +265,18 @@ export function renderGameView(root, data, replayOptions = {}) {
   const currentStepIndex = replaySteps.length - 1;
   const timestampParam = replayOptions.timestamp;
   const phaseParam = replayOptions.phase;
+  const replayParam = replayOptions.replay;
+  const hasReplay = Boolean(replayParam);
   const hasTimestamp = timestampParam !== null && timestampParam !== undefined;
-  const requestedStep = hasTimestamp && /^\d+$/.test(String(timestampParam))
-    ? replaySteps.findIndex((step) => step.type !== 'current' &&
+  const requestedStep = hasReplay
+    ? replaySteps.findIndex((step) => step.replayId === replayParam)
+    : hasTimestamp && /^\d+$/.test(String(timestampParam))
+      ? replaySteps.findIndex((step) => step.type !== 'current' &&
       String(step.timestamp) === String(timestampParam) &&
       (!phaseParam || step.type === phaseParam))
-    : -1;
-  const invalidStep = hasTimestamp && requestedStep < 0;
-  let stepIndex = invalidStep || !hasTimestamp ? currentStepIndex : requestedStep;
+      : -1;
+  const invalidStep = (hasReplay || hasTimestamp) && requestedStep < 0;
+  let stepIndex = invalidStep || (!hasReplay && !hasTimestamp) ? currentStepIndex : requestedStep;
   let viewPlayers = replaySteps[stepIndex].players;
   let selectedStep = replaySteps[stepIndex];
   let sceneVersion = 0;
@@ -316,7 +333,9 @@ export function renderGameView(root, data, replayOptions = {}) {
     .filter((step) => step.type !== 'current' && Number.isFinite(step.roundNumber))
     .map((step) => step.roundNumber))];
   replayRounds.forEach((round) => {
-    const option = text(document, 'option', `Round ${round}`);
+    const approximate = replaySteps.some((step) =>
+      step.type !== 'current' && step.roundNumber === round && step.approximateRound);
+    const option = text(document, 'option', `Round ${round}${approximate ? ' (approximate)' : ''}`);
     option.value = String(round);
     roundSelect.append(option);
   });
@@ -446,12 +465,14 @@ export function renderGameView(root, data, replayOptions = {}) {
     stepIndex = nextStepIndex;
     const step = replaySteps[stepIndex];
     selectedStep = step;
-    const throughLogIndex = step.type === 'current'
-      ? Infinity
-      : step.type === 'attack'
-        ? step.logIndex - 1
-        : step.logIndex;
-    const capturedHistory = buildCapturedHistory(data.gameActionLog, players, throughLogIndex, step.roundNumber);
+    const throughLogIndex = step.type === 'current' ? Infinity : step.logIndex;
+    const capturedHistory = buildCapturedHistory(
+      data.gameActionLog,
+      players,
+      throughLogIndex,
+      step.roundNumber,
+      step.type !== 'attack',
+    );
     if (step.type === 'result') {
       capturedHistory.forEach((captures) => captures.forEach((die) => {
         if (die.logIndex === step.logIndex) die.replayRole = 'changed';
@@ -500,14 +521,15 @@ export function renderGameView(root, data, replayOptions = {}) {
           ? 'Attack result'
           : step.message;
       const roundText = Number.isFinite(step.roundNumber) ? `Round ${step.roundNumber} · ` : '';
-      replayStatus.textContent = `History · ${roundText}${attackText} · step ${stepIndex + 1} of ${currentStepIndex}`;
+      const approximation = step.approximateRound ? 'Approximate setup · ' : '';
+      replayStatus.textContent = `History · ${roundText}${approximation}${attackText} · step ${stepIndex + 1} of ${currentStepIndex}`;
     } else if (!invalidStep) {
       replayStatus.textContent = 'Current game state.';
     }
     const gameHash = `#game?gameId=${encodeURIComponent(data.gameId)}`;
     const stepHash = step.type === 'current' || step.timestamp === null || step.timestamp === undefined
       ? gameHash
-      : `${gameHash}&timestamp=${encodeURIComponent(String(step.timestamp))}${step.type === 'result' ? '&phase=result' : ''}`;
+      : `${gameHash}&replay=${encodeURIComponent(step.replayId)}`;
     stepLink.href = stepHash;
     if (updateHash && document.defaultView?.history?.replaceState) {
       document.defaultView.history.replaceState(null, '', stepHash);
@@ -527,6 +549,10 @@ export function renderGameView(root, data, replayOptions = {}) {
   });
   updateStep(stepIndex, false);
   const privateChat = current === null && players.some((player) => player.isChatPrivate);
-  highlightActivity = renderActivity(document, root, data, privateChat);
+  highlightActivity = renderActivity(document, root, data, privateChat, (logIndex) => {
+    const selectedIndex = replaySteps.findIndex((step) =>
+      step.type !== 'current' && step.logIndex === logIndex);
+    if (selectedIndex >= 0) updateStep(selectedIndex);
+  });
   highlightActivity(replaySteps[stepIndex].logIndex);
 }

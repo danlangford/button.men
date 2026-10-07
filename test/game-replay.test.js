@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
   buildCapturedHistory,
@@ -252,6 +253,9 @@ test('game replay exposes every completed round when initial rolls are missing o
   ], players, 3);
 
   assert.deepEqual([...new Set(steps.map((step) => step.roundNumber))], [1, 2, 3]);
+  assert.ok(steps.filter((step) => step.roundNumber === 1).every((step) => step.approximateRound));
+  assert.ok(steps.filter((step) => step.roundNumber === 2).every((step) => step.approximateRound));
+  assert.ok(steps.filter((step) => step.roundNumber === 3).every((step) => !step.approximateRound));
 });
 
 test('capture history resets at the start of each round', () => {
@@ -295,4 +299,35 @@ test('capture history resets at the start of each round', () => {
   ]);
   assert.equal(buildCapturedHistory(log, players, 0)[0].length, 1);
   assert.equal(buildCapturedHistory(log, players, 0)[1].length, 0);
+});
+
+test('game 120763 regression: an attack step excludes captures from that attack and later entries', () => {
+  const log = JSON.parse(readFileSync(
+    new URL('./fixtures/game-120763-action-log.json', import.meta.url),
+    'utf8',
+  ));
+  const players = [{ playerName: 'player' }, { playerName: 'opponent' }];
+  const steps = buildReplaySteps(log, players, 1);
+  const firstAttack = steps.find((step) => step.type === 'attack');
+  const firstResult = steps.find((step) => step.type === 'result');
+
+  assert.deepEqual(
+    buildCapturedHistory(log, players, firstAttack.logIndex, 1, false).map((dice) => dice.length),
+    [0, 0],
+  );
+  assert.deepEqual(
+    buildCapturedHistory(log, players, firstResult.logIndex, 1).map((dice) => dice.length),
+    [1, 0],
+  );
+});
+
+test('replay links have distinct stable ids when multiple entries share a timestamp', () => {
+  const players = [{ playerName: 'alice' }, { playerName: 'bob' }];
+  const steps = buildReplaySteps([
+    { timestamp: 1, player: 'alice', message: 'alice passed' },
+    { timestamp: 1, player: 'bob', message: 'bob passed' },
+  ], players, 1).filter((step) => step.type !== 'current');
+
+  assert.equal(new Set(steps.map((step) => step.replayId)).size, 2);
+  assert.ok(steps.every((step) => step.replayId.endsWith('-event')));
 });

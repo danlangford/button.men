@@ -136,6 +136,8 @@
     }
     .game-board > .game-player { min-width: 0; }
     .game-event-current-step { border-left: .35rem solid #806600; background: #fff3cd; font-weight: 600; }
+    .game-event-action[role="button"] { cursor: pointer; }
+    .game-event-action[role="button"]:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
     @media (max-width: 575.98px) {
       main { min-width: 0; overflow-wrap: anywhere; }
       .navbar-controls {

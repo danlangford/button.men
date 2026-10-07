@@ -158,6 +158,7 @@ async function showGame(player) {
   ]);
   if (request !== viewRequest) return;
   renderGameView($('game-content'), data, {
+    replay: params.get('replay'),
     timestamp: params.get('timestamp'),
     phase: params.get('phase'),
     colorPreferences,

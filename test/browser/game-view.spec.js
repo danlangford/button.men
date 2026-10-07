@@ -132,7 +132,7 @@ test('replay links select a step and invalid steps fall back to the current game
   await page.goto('/#game?gameId=22&timestamp=1');
   await expect(page.getByText('History · alice used Skill attack against bob')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Take action on buttonweavers.com' })).toBeHidden();
-  await expect(page.getByRole('link', { name: 'Link to this step' })).toHaveAttribute('href', '#game?gameId=22&timestamp=1');
+  await expect(page.getByRole('link', { name: 'Link to this step' })).toHaveAttribute('href', /#game\?gameId=22&replay=.+-attack/);
   await expect(page.locator('.game-3d-hud .game-hud-pill').filter({ hasText: 'Attacker' })).toBeVisible();
   await expect(page.getByText('Attack direction: attackers → targets.')).toHaveCount(0);
   const scene = page.locator('.game-3d-board');
@@ -143,6 +143,11 @@ test('replay links select a step and invalid steps fall back to the current game
   await expect(page.locator('.game-event-current-step')).toContainText('alice performed Skill attack');
   await expect(page.getByText('bob passed')).toBeVisible();
   await expect(page.getByText('alice set swing values: V=6')).toBeVisible();
+  await page.locator('.game-event-action').filter({ hasText: 'bob passed' }).click();
+  await expect(page.getByText(/History · bob passed/)).toBeVisible();
+  await expect(page).toHaveURL(/#game\?gameId=22&replay=.+-event$/);
+  await page.locator('.game-event-action').filter({ hasText: 'alice performed Skill attack' }).click();
+  await expect(page.getByText('History · alice used Skill attack against bob')).toBeVisible();
   await page.getByRole('button', { name: 'Chat', exact: true }).click();
   await expect(page.locator('.game-event-current-step')).toContainText('alice performed Skill attack');
   await page.getByRole('button', { name: 'Show flat game state' }).click();
@@ -166,7 +171,7 @@ test('replay links select a step and invalid steps fall back to the current game
   expect(playerInfo.y).toBeGreaterThanOrEqual(flatField.y + flatField.height - 1);
   await page.getByRole('button', { name: 'Show 3D game view' }).click();
   await expect(scene).toHaveAttribute('data-zoom', '1.25');
-  await expect(page).toHaveURL(/#game\?gameId=22&timestamp=1&phase=result$/);
+  await expect(page).toHaveURL(/#game\?gameId=22&replay=.+-result$/);
   await page.getByRole('button', { name: 'Next step' }).click();
   await page.getByRole('button', { name: 'Next step' }).click();
   await page.getByRole('button', { name: 'Next step' }).click();

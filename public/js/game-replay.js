@@ -345,7 +345,8 @@ function initialRoundPlayers(entry, currentPlayers) {
     const escapedName = String(player.playerName || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const match = message.match(new RegExp(`${escapedName} rolled \\[([^\\]]*)\\]`, 'i'));
     const dice = match ? parseDice(match[1]) : null;
-    if (dice) player.activeDieArray = dice.map((die) => ({ ...die, properties: [] }));
+    if (!dice) return null;
+    player.activeDieArray = dice.map((die) => ({ ...die, properties: [] }));
     player.capturedDieArray = [];
     player.outOfPlayDieArray = [];
   }
@@ -366,6 +367,26 @@ function addRoundMetadata(steps, roundNumber) {
   return steps.map((step) => ({ ...step, roundNumber }));
 }
 
+function replayEntryKey(entry, duplicateNumber) {
+  const source = `${entry.timestamp}\u0000${entry.player || ''}\u0000${entry.message || ''}`;
+  let hash = 2166136261;
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${(hash >>> 0).toString(36)}-${duplicateNumber}`;
+}
+
+function addReplayEntryKeys(entries) {
+  const duplicates = new Map();
+  entries.forEach((entry) => {
+    const fingerprint = `${entry.timestamp}\u0000${entry.player || ''}\u0000${entry.message || ''}`;
+    const duplicateNumber = duplicates.get(fingerprint) || 0;
+    duplicates.set(fingerprint, duplicateNumber + 1);
+    entry.replayEntryKey = replayEntryKey(entry, duplicateNumber);
+  });
+}
+
 function buildRoundForward(entries, initialPlayers, roundNumber) {
   let state = clonePlayers(initialPlayers);
   const steps = [];
@@ -375,7 +396,8 @@ function buildRoundForward(entries, initialPlayers, roundNumber) {
       clearReplayRoles(players);
       steps.push({
         type: 'event', player: entry.player, message: entry.message,
-        timestamp: entry.timestamp, logIndex: entry.originalIndex, players, roundNumber,
+        timestamp: entry.timestamp, logIndex: entry.originalIndex,
+        replayId: `${entry.replayEntryKey}-event`, players, roundNumber,
       });
       continue;
     }
@@ -401,6 +423,7 @@ function buildRoundForward(entries, initialPlayers, roundNumber) {
       type: 'attack', player: entry.player, playerIndex, targetIndex,
       attackType: entry.attack.attackType, message: entry.message,
       timestamp: entry.timestamp, logIndex: entry.originalIndex, players: beforePlayers, roundNumber,
+      replayId: `${entry.replayEntryKey}-attack`,
     });
 
     const afterPlayers = clonePlayers(beforePlayers);
@@ -412,6 +435,7 @@ function buildRoundForward(entries, initialPlayers, roundNumber) {
     steps.push({
       type: 'result', player: entry.player, message: entry.message,
       timestamp: entry.timestamp, logIndex: entry.originalIndex, players: afterPlayers, roundNumber,
+      replayId: `${entry.replayEntryKey}-result`,
     });
     state = afterPlayers;
   }
@@ -427,15 +451,18 @@ export function buildReplaySteps(actionLog, currentPlayers, roundNumber) {
     }))
     .sort((first, second) => (Number(first.timestamp) || 0) - (Number(second.timestamp) || 0) ||
       first.originalIndex - second.originalIndex);
+  addReplayEntryKeys(entries);
   const roundStart = roundBoundaryIndex(entries, roundNumber);
   const replayEntries = roundStart < 0 ? entries : entries.slice(roundStart + 1);
   const earlierEntries = roundStart < 0 ? [] : entries.slice(0, roundStart + 1);
   const earlierSteps = [];
   for (const segment of completedRoundSegments(earlierEntries)) {
-    const initial = segment.entries
+    const loggedInitial = segment.entries
       .map((entry) => initialRoundPlayers(entry, currentPlayers))
-      .find(Boolean) || resetRoundPlayers(currentPlayers);
-    earlierSteps.push(...buildRoundForward(segment.entries, initial, segment.roundNumber));
+      .find(Boolean);
+    const initial = loggedInitial || resetRoundPlayers(currentPlayers);
+    earlierSteps.push(...buildRoundForward(segment.entries, initial, segment.roundNumber)
+      .map((step) => ({ ...step, approximateRound: !loggedInitial })));
   }
 
   let state = clonePlayers(currentPlayers);
@@ -449,6 +476,7 @@ export function buildReplaySteps(actionLog, currentPlayers, roundNumber) {
       message: entry.message,
       timestamp: entry.timestamp,
       logIndex: entry.originalIndex,
+      replayId: `${entry.replayEntryKey}-event`,
       players,
     });
   };
@@ -479,6 +507,7 @@ export function buildReplaySteps(actionLog, currentPlayers, roundNumber) {
       message: entry.message,
       timestamp: entry.timestamp,
       logIndex: entry.originalIndex,
+      replayId: `${entry.replayEntryKey}-result`,
       players: afterPlayers,
     });
 
@@ -503,6 +532,7 @@ export function buildReplaySteps(actionLog, currentPlayers, roundNumber) {
       message: entry.message,
       timestamp: entry.timestamp,
       logIndex: entry.originalIndex,
+      replayId: `${entry.replayEntryKey}-attack`,
       players: beforePlayers,
     });
     state = beforePlayers;
@@ -515,7 +545,7 @@ export function buildReplaySteps(actionLog, currentPlayers, roundNumber) {
   ];
 }
 
-export function buildCapturedHistory(actionLog, players, throughLogIndex = Infinity, roundNumber) {
+export function buildCapturedHistory(actionLog, players, throughLogIndex = Infinity, roundNumber, includeThroughEntry = true) {
   const playerList = list(players);
   const history = playerList.map(() => []);
   const entries = list(actionLog)
@@ -538,10 +568,12 @@ export function buildCapturedHistory(actionLog, players, throughLogIndex = Infin
   const limitTimestamp = Number(limitEntry?.timestamp) || 0;
 
   for (const entry of entries.slice(roundStart + 1, roundEnd < 0 ? undefined : roundEnd + 1)) {
+    const isLimitEntry = limitEntry && entry.originalIndex === limitEntry.originalIndex;
     if (Number.isFinite(throughLogIndex) && (
       !limitEntry ||
       (Number(entry.timestamp) || 0) > limitTimestamp ||
-      ((Number(entry.timestamp) || 0) === limitTimestamp && entry.originalIndex > limitEntry.originalIndex)
+      ((Number(entry.timestamp) || 0) === limitTimestamp && entry.originalIndex > limitEntry.originalIndex) ||
+      (!includeThroughEntry && isLimitEntry)
     )) continue;
     const attack = parseAttackMessage(entry.message);
     if (!attack) continue;
