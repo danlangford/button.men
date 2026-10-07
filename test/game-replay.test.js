@@ -40,6 +40,9 @@ test('game replay parser extracts attackers, targets, and attack type', () => {
     ],
     targets: [{ recipe: '(4)', sides: 4, value: 1, skillArray: [] }],
   });
+  assert.equal(parseAttackMessage(
+    'alice performed Trip attack using [t(T=2,T=2):3] against [Hog%(4):4]',
+  ).attackers[0].recipe, 't(T=2,T=2)');
   assert.equal(parseAttackMessage('alice passed'), null);
 });
 
@@ -154,6 +157,23 @@ test('game replay keeps roles local to each attack and restores captures for its
   assert.equal(currentPlayers[0].capturedDieArray[0].replayRole, undefined);
 });
 
+test('game replay recognizes transformed defenders that reroll before capture', () => {
+  const players = [
+    { playerName: 'alice', activeDieArray: [{ recipe: 't(T=1,T=1)', value: 2 }], capturedDieArray: [{ recipe: 'Hog%(6)', value: 1 }] },
+    { playerName: 'bob', activeDieArray: [], capturedDieArray: [] },
+  ];
+  const steps = buildReplaySteps([{
+    timestamp: 1,
+    player: 'alice',
+    message: 'alice performed Trip attack using [t(T=2,T=2):3] against [Hog%(4):4]; Attacker t(T=2,T=2) rerolled 3 => 2; Defender Hog%(4) recipe changed to Hog%(6), rerolled 4 => 1, was captured',
+  }], players);
+
+  assert.equal(steps[0].players[1].activeDieArray[0].recipe, 'Hog%(4)');
+  assert.equal(steps[0].players[1].activeDieArray[0].value, 4);
+  assert.equal(steps[1].players[0].capturedDieArray[0].value, 1);
+  assert.equal(steps[1].players[0].capturedDieArray[0].replayRole, 'changed');
+});
+
 test('game replay begins after the previous round boundary', () => {
   const players = [
     { playerName: 'alice', activeDieArray: [{ recipe: 6, value: 3 }] },
@@ -167,6 +187,47 @@ test('game replay begins after the previous round boundary', () => {
 
   assert.deepEqual(steps.map((step) => step.type), ['attack', 'result', 'current']);
   assert.equal(steps[0].timestamp, 3);
+});
+
+test('game replay reconstructs earlier rounds from their initial rolls', () => {
+  const players = [
+    { playerName: 'alice', activeDieArray: [{ recipe: 6, value: 5 }], capturedDieArray: [] },
+    { playerName: 'bob', activeDieArray: [{ recipe: 8, value: 7 }], capturedDieArray: [] },
+  ];
+  const steps = buildReplaySteps([
+    { timestamp: 0, player: 'alice', message: 'alice set swing values: V=6' },
+    {
+      timestamp: 1,
+      player: '',
+      message: 'alice won initiative for round 1. Initial die values: alice rolled [(6):2], bob rolled [(8):4].',
+    },
+    {
+      timestamp: 2,
+      player: 'alice',
+      message: 'alice performed Power attack using [(6):2] against [(8):4]; Defender (8) was captured; Attacker (6) rerolled 2 => 5. End of round: alice won round 1 (8 vs. 0)',
+    },
+    {
+      timestamp: 3,
+      player: '',
+      message: 'bob won initiative for round 2. Initial die values: alice rolled [(6):3], bob rolled [(8):6].',
+    },
+    {
+      timestamp: 4,
+      player: 'bob',
+      message: 'bob performed Power attack using [(8):6] against [(6):3]; Attacker (8) rerolled 6 => 7',
+    },
+  ], players, 2);
+
+  assert.deepEqual(steps.map((step) => step.roundNumber), [1, 1, 1, 1, 2, 2, 2, 2]);
+  assert.deepEqual(steps.map((step) => step.type), [
+    'event', 'event', 'attack', 'result', 'event', 'attack', 'result', 'current',
+  ]);
+  assert.equal(steps[0].message, 'alice set swing values: V=6');
+  assert.equal(steps[2].players[0].activeDieArray[0].value, 2);
+  assert.equal(steps[2].players[1].activeDieArray[0].value, 4);
+  assert.equal(steps[3].players[0].capturedDieArray[0].value, 4);
+  assert.equal(steps[4].players[0].capturedDieArray.length, 0);
+  assert.equal(steps[4].players[1].capturedDieArray.length, 0);
 });
 
 test('capture history resets at the start of each round', () => {

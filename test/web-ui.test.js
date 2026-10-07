@@ -647,6 +647,23 @@ test('web-ui: Game replay - steps backward and forward and hides external action
   assert.equal(linkedElements.find((element) => element.textContent === 'Take action on buttonweavers.com').hidden, true);
   assert.equal(linkedElements.find((element) => element.textContent === 'Link to this step').href, '#game?gameId=22&timestamp=1');
 
+  const resultRoot = document.createElement('main');
+  renderGameView(resultRoot, {
+    gameId: 22,
+    playerDataArray: [
+      { playerName: 'alice', activeDieArray: [{ recipe: 'z(8)', sides: 8, value: 3, skillArray: ['Speed'] }] },
+      { playerName: 'bob', activeDieArray: [{ recipe: 6, value: 4 }] },
+    ],
+    gameActionLog: [{
+      timestamp: 1,
+      player: 'alice',
+      message: 'alice performed Skill attack using [z(8):2] against [(6):4]; Defender (6) was captured; Attacker z(8) rerolled 2 => 3',
+    }],
+  }, { timestamp: '1', phase: 'result' });
+  const resultElements = allElements(resultRoot);
+  assert.match(resultElements.find((element) => element.className === 'small text-body-secondary mb-1').textContent, /Attack result/);
+  assert.equal(resultElements.find((element) => element.textContent === 'Link to this step').href, '#game?gameId=22&timestamp=1&phase=result');
+
   const invalidRoot = document.createElement('main');
   renderGameView(invalidRoot, {
     gameId: 22,
@@ -654,6 +671,28 @@ test('web-ui: Game replay - steps backward and forward and hides external action
     gameActionLog: [],
   }, { timestamp: '8' });
   assert.match(allElements(invalidRoot).find((element) => element.className === 'small text-body-secondary mb-1').textContent, /step not found/);
+
+  const roundsRoot = document.createElement('main');
+  renderGameView(roundsRoot, {
+    gameId: 22,
+    roundNumber: 2,
+    playerDataArray: [
+      { playerName: 'alice', activeDieArray: [{ recipe: 6, value: 3 }], capturedDieArray: [] },
+      { playerName: 'bob', activeDieArray: [{ recipe: 8, value: 6 }], capturedDieArray: [] },
+    ],
+    gameActionLog: [
+      { timestamp: 1, player: '', message: 'alice won initiative for round 1. Initial die values: alice rolled [(6):2], bob rolled [(8):4].' },
+      { timestamp: 2, player: 'alice', message: 'alice performed Power attack using [(6):2] against [(8):4]. End of round: alice won round 1 (8 vs. 0)' },
+      { timestamp: 3, player: '', message: 'bob won initiative for round 2. Initial die values: alice rolled [(6):3], bob rolled [(8):6].' },
+    ],
+  });
+  const roundsElements = allElements(roundsRoot);
+  const roundSelect = roundsElements.find((element) => element.attributes?.['aria-label'] === 'Replay round');
+  assert.ok(roundSelect);
+  assert.deepEqual(roundSelect.children.map((option) => option.textContent), ['Round 1', 'Round 2']);
+  roundSelect.value = '1';
+  roundSelect.onchange();
+  assert.match(roundsElements.find((element) => element.className === 'small text-body-secondary mb-1').textContent, /Round 1/);
 });
 
 test('web-ui: Reach game search - one search link and nav wiring reach the search view', () => {

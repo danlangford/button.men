@@ -159,6 +159,7 @@ async function showGame(player) {
   if (request !== viewRequest) return;
   renderGameView($('game-content'), data, {
     timestamp: params.get('timestamp'),
+    phase: params.get('phase'),
     colorPreferences,
   });
 }

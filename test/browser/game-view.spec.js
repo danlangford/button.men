@@ -158,7 +158,7 @@ test('replay links select a step and invalid steps fall back to the current game
   expect(capturedPile.x).toBeGreaterThanOrEqual(activeDice.x + activeDice.width - 1);
   await page.getByRole('button', { name: 'Show 3D game view' }).click();
   await expect(scene).toHaveAttribute('data-zoom', '1.25');
-  await expect(page).toHaveURL(/#game\?gameId=22&timestamp=1$/);
+  await expect(page).toHaveURL(/#game\?gameId=22&timestamp=1&phase=result$/);
   await page.getByRole('button', { name: 'Next step' }).click();
   await page.getByRole('button', { name: 'Next step' }).click();
   await page.getByRole('button', { name: 'Next step' }).click();

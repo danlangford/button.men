@@ -252,9 +252,12 @@ export function renderGameView(root, data, replayOptions = {}) {
   const replaySteps = buildReplaySteps(data.gameActionLog, players, data.roundNumber);
   const currentStepIndex = replaySteps.length - 1;
   const timestampParam = replayOptions.timestamp;
+  const phaseParam = replayOptions.phase;
   const hasTimestamp = timestampParam !== null && timestampParam !== undefined;
   const requestedStep = hasTimestamp && /^\d+$/.test(String(timestampParam))
-    ? replaySteps.findIndex((step) => step.type !== 'current' && String(step.timestamp) === String(timestampParam))
+    ? replaySteps.findIndex((step) => step.type !== 'current' &&
+      String(step.timestamp) === String(timestampParam) &&
+      (!phaseParam || step.type === phaseParam))
     : -1;
   const invalidStep = hasTimestamp && requestedStep < 0;
   let stepIndex = invalidStep || !hasTimestamp ? currentStepIndex : requestedStep;
@@ -307,7 +310,20 @@ export function renderGameView(root, data, replayOptions = {}) {
   const returnToCurrent = text(document, 'button', 'Return to current game', 'btn btn-sm btn-outline-secondary');
   returnToCurrent.type = 'button';
   const stepLink = text(document, 'a', 'Link to this step', 'btn btn-sm btn-link');
-  replayControls.append(previous, next, returnToCurrent, stepLink);
+  const roundLabel = text(document, 'label', 'Round', 'small fw-semibold');
+  const roundSelect = text(document, 'select', '', 'form-select form-select-sm w-auto');
+  roundSelect.setAttribute('aria-label', 'Replay round');
+  const replayRounds = [...new Set(replaySteps
+    .filter((step) => step.type !== 'current' && Number.isFinite(step.roundNumber))
+    .map((step) => step.roundNumber))];
+  replayRounds.forEach((round) => {
+    const option = text(document, 'option', `Round ${round}`);
+    option.value = String(round);
+    roundSelect.append(option);
+  });
+  roundLabel.append(roundSelect);
+  roundLabel.hidden = replayRounds.length < 2;
+  replayControls.append(previous, next, roundLabel, returnToCurrent, stepLink);
   const replayStatus = text(document, 'p', '', 'small text-body-secondary mb-1');
   const zoomControls = text(document, 'div', '', 'game-3d-zoom-controls');
   const zoomOut = text(document, 'button', '−', 'btn btn-sm btn-dark');
@@ -436,7 +452,7 @@ export function renderGameView(root, data, replayOptions = {}) {
       : step.type === 'attack'
         ? step.logIndex - 1
         : step.logIndex;
-    const capturedHistory = buildCapturedHistory(data.gameActionLog, players, throughLogIndex, data.roundNumber);
+    const capturedHistory = buildCapturedHistory(data.gameActionLog, players, throughLogIndex, step.roundNumber);
     if (step.type === 'result') {
       capturedHistory.forEach((captures) => captures.forEach((die) => {
         if (die.logIndex === step.logIndex) die.replayRole = 'changed';
@@ -477,20 +493,22 @@ export function renderGameView(root, data, replayOptions = {}) {
     previous.disabled = stepIndex === 0;
     next.disabled = stepIndex === currentStepIndex;
     returnToCurrent.hidden = !isHistory;
+    if (Number.isFinite(step.roundNumber)) roundSelect.value = String(step.roundNumber);
     if (isHistory) {
       const attackText = step.type === 'attack'
         ? `${step.player} used ${step.attackType} attack against ${step.players[step.targetIndex].playerName}`
         : step.type === 'result'
           ? 'Attack result'
           : step.message;
-      replayStatus.textContent = `History · ${attackText} · step ${stepIndex + 1} of ${currentStepIndex}`;
+      const roundText = Number.isFinite(step.roundNumber) ? `Round ${step.roundNumber} · ` : '';
+      replayStatus.textContent = `History · ${roundText}${attackText} · step ${stepIndex + 1} of ${currentStepIndex}`;
     } else if (!invalidStep) {
       replayStatus.textContent = 'Current game state.';
     }
     const gameHash = `#game?gameId=${encodeURIComponent(data.gameId)}`;
     const stepHash = step.type === 'current' || step.timestamp === null || step.timestamp === undefined
       ? gameHash
-      : `${gameHash}&timestamp=${encodeURIComponent(String(step.timestamp))}`;
+      : `${gameHash}&timestamp=${encodeURIComponent(String(step.timestamp))}${step.type === 'result' ? '&phase=result' : ''}`;
     stepLink.href = stepHash;
     if (updateHash && document.defaultView?.history?.replaceState) {
       document.defaultView.history.replaceState(null, '', stepHash);
@@ -503,6 +521,11 @@ export function renderGameView(root, data, replayOptions = {}) {
     if (stepIndex < currentStepIndex) updateStep(stepIndex + 1);
   });
   returnToCurrent.addEventListener('click', () => updateStep(currentStepIndex));
+  roundSelect.addEventListener('change', () => {
+    const selectedRound = Number(roundSelect.value);
+    const firstStep = replaySteps.findIndex((step) => step.type !== 'current' && step.roundNumber === selectedRound);
+    if (firstStep >= 0) updateStep(firstStep);
+  });
   updateStep(stepIndex, false);
   const privateChat = current === null && players.some((player) => player.isChatPrivate);
   highlightActivity = renderActivity(document, root, data, privateChat);
