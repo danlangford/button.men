@@ -1,4 +1,5 @@
 import { gameUrl } from './games.js';
+import { renderDiceBoard } from './dice-board.js';
 import { buildCapturedHistory, buildReplaySteps, formatDieRecipe } from './game-replay.js';
 import { profileUrl } from './links.js';
 
@@ -27,29 +28,6 @@ function dieLabel(die) {
     .filter((status) => status !== 'WasJustCaptured')
     .join(', ');
   return { recipe, recipeLabel: formatDieRecipe(die), rolled, skills, statuses };
-}
-
-function renderDie(document, die, captured = false, color = '') {
-  const info = dieLabel(die);
-  const role = die.replayRole;
-  const roleLabel = { attacker: 'Attacker', target: 'Target', changed: 'Changed' }[role];
-  const card = text(
-    document,
-    'div',
-    '',
-    `game-die card p-2 text-center${captured ? ' game-die-captured' : ''}${roleLabel ? ` game-die-replay-${role}` : ''}`,
-  );
-  if (card.dataset) card.dataset.recipe = info.recipe;
-  if (/^#[\da-f]{6}$/i.test(color)) card.style.borderTopColor = color;
-  if (captured) card.setAttribute('aria-disabled', 'true');
-  if (roleLabel) card.append(text(document, 'span', roleLabel, 'game-die-replay-label badge'));
-  card.append(
-    text(document, 'strong', info.rolled ?? '—', 'game-die-value d-block'),
-    text(document, 'span', info.recipeLabel, 'small'),
-  );
-  if (info.skills) card.append(text(document, 'span', info.skills, 'small d-block'));
-  if (info.statuses) card.append(text(document, 'small', info.statuses, 'd-block text-body-secondary'));
-  return card;
 }
 
 function playerScoreText(player, maxWins) {
@@ -122,51 +100,6 @@ function renderPlayer(document, player, active, initiative, position, maxWins) {
   if (active) card.append(text(document, 'span', 'Active player', 'badge text-bg-primary mt-2 me-1'));
   if (initiative) card.append(text(document, 'span', 'Initiative', 'badge text-bg-warning mt-2'));
   return card;
-}
-
-function renderFlatField(document, players, viewing, flipped, colorPreferences, currentViewerIndex, attackStep) {
-  const field = text(document, 'div', '', 'game-flat-field');
-  for (const slot of [1, 0]) {
-    const playerIndex = slot === 0
-      ? (flipped ? 1 - viewing : viewing)
-      : 1 - (flipped ? 1 - viewing : viewing);
-    const player = players[playerIndex];
-    const side = text(document, 'section', '', `game-flat-side game-flat-side-${slot}`);
-    side.append(text(document, 'h2', `${player.playerName || `Player ${playerIndex + 1}`} dice`, 'h5'));
-    const activeDice = text(document, 'div', '', 'game-flat-active-dice');
-    list(player.activeDieArray).forEach((die) =>
-      activeDice.append(renderDie(document, die, false, player.playerColor)));
-    side.append(activeDice);
-
-    const captured = list(player.replayCapturedDieArray);
-    if (captured.length) {
-      const pile = text(document, 'div', '', 'game-flat-captured-pile');
-      pile.append(text(document, 'h3', `Captured by ${player.playerName || `Player ${playerIndex + 1}`}`, 'small fw-semibold'));
-      const capturedDice = text(document, 'div', '', 'game-flat-captured-dice');
-      captured.forEach((die) => {
-        const color = currentViewerIndex !== null && playerIndex === currentViewerIndex
-          ? colorPreferences.neutralOpponentColor
-          : currentViewerIndex !== null
-            ? colorPreferences.neutralPlayerColor
-            : players[die.originalPlayerIndex]?.playerColor;
-        capturedDice.append(renderDie(document, die, true, color));
-      });
-      pile.append(capturedDice);
-      side.append(pile);
-    }
-    field.append(side);
-  }
-  if (attackStep) {
-    const attacker = players[attackStep.playerIndex];
-    const target = players[attackStep.targetIndex];
-    field.append(text(
-      document,
-      'p',
-      `${attacker.playerName} → ${target.playerName} · ${attackStep.attackType} attack`,
-      'game-flat-attack-direction',
-    ));
-  }
-  return field;
 }
 
 function entry(data, type) {
@@ -309,13 +242,13 @@ export function renderGameView(root, data, replayOptions = {}) {
   action.target = '_blank';
   action.rel = 'noopener';
   controls.append(action);
-  const toggleView = text(document, 'button', 'Show flat game state', 'btn btn-sm btn-outline-secondary');
+  const toggleView = text(document, 'button', 'Show 2D game view', 'btn btn-sm btn-outline-secondary');
   toggleView.type = 'button';
   toggleView.addEventListener('click', () => {
     const show3d = !scene.hidden;
     scene.hidden = show3d;
     board.hidden = !show3d;
-    toggleView.textContent = show3d ? 'Show 3D game view' : 'Show flat game state';
+    toggleView.textContent = show3d ? 'Show 3D game view' : 'Show 2D game view';
   });
   controls.append(toggleView);
   const replayControls = text(document, 'div', '', 'd-flex flex-wrap align-items-center gap-2 mb-2');
@@ -409,15 +342,13 @@ export function renderGameView(root, data, replayOptions = {}) {
   const renderBoard = () => {
     board.replaceChildren(
       playerAt(1),
-      renderFlatField(
-        document,
-        viewPlayers,
-        viewing,
-        flipped,
-        colorPreferences,
-        current,
-        selectedStep.type === 'attack' ? selectedStep : null,
-      ),
+      renderDiceBoard(document, viewPlayers, {
+        bottomPlayerIndex: playerIndexAt(0),
+        currentViewerIndex: current,
+        neutralOpponentColor: colorPreferences.neutralOpponentColor,
+        neutralPlayerColor: colorPreferences.neutralPlayerColor,
+        attackType: selectedStep.type === 'attack' ? selectedStep.attackType : null,
+      }),
       playerAt(0),
     );
     topHud.replaceChildren(hudPlayerAt(1));

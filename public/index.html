@@ -92,48 +92,35 @@
       font-size: .82rem;
       line-height: 1.2;
     }
-    .game-die-captured { opacity: .45; filter: grayscale(1); }
-    .game-die-captured .game-die-value { text-decoration: line-through; }
-    .game-die-replay-attacker { border: 3px solid #a64b00 !important; }
-    .game-die-replay-target { border: 3px dashed #006b84 !important; }
-    .game-die-replay-changed { border: 3px double #776000 !important; }
-    .game-die-replay-label { display: block; margin-bottom: .25rem; }
-    .game-die-replay-attacker, .game-die-replay-target { position: relative; z-index: 1; transform: scale(1.08); }
-    .game-die-replay-attacker .game-die-replay-label { color: #fff; background: #a64b00; }
-    .game-die-replay-target .game-die-replay-label { color: #fff; background: #006b84; }
-    .game-die-replay-changed .game-die-replay-label { color: #fff; background: #776000; }
     .game-board { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-    .game-flat-field {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: .75rem;
-      padding: .75rem;
+    .game-spatial-board {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 72vh;
       border: 1px solid #70472d;
       border-radius: .75rem;
       background: #31564c;
     }
-    .game-flat-side {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      min-width: 0;
-      color: #fff;
-    }
-    .game-flat-side > h2 { grid-column: 1 / -1; }
-    .game-flat-active-dice,
-    .game-flat-captured-dice { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .5rem; }
-    .game-flat-captured-pile {
-      max-width: 8rem;
-      padding-left: .5rem;
-      border-left: 1px solid rgb(255 255 255 / 30%);
-    }
-    .game-flat-attack-direction {
-      grid-column: 1 / -1;
-      margin: 0;
-      color: #ffe07a;
-      font-size: 1.25rem;
-      font-weight: 800;
-      text-align: center;
-    }
+    .game-spatial-region-background { fill: rgb(10 35 31 / 28%); stroke: rgb(255 255 255 / 24%); stroke-width: 2; }
+    .game-spatial-player-name,
+    .game-spatial-captured-label,
+    .game-spatial-attack-label { fill: #fff; font-size: 22px; font-weight: 700; }
+    .game-spatial-captured-background { fill: rgb(0 0 0 / 18%); stroke: rgb(255 255 255 / 35%); stroke-width: 2; stroke-dasharray: 8 6; }
+    .game-spatial-die { color: #111b1a; }
+    .game-spatial-die:focus { outline: none; }
+    .game-spatial-die:focus .game-spatial-die-shape { stroke: #fff; stroke-width: 7; }
+    .game-spatial-die-value { fill: currentcolor; font-size: 30px; font-weight: 800; }
+    .game-spatial-die-recipe { fill: currentcolor; font-size: 17px; font-weight: 700; }
+    .game-spatial-die-details { fill: #fff; font-size: 15px; font-weight: 600; paint-order: stroke; stroke: #173a34; stroke-width: 4; }
+    .game-spatial-die-role { fill: #fff; font-size: 17px; font-weight: 800; paint-order: stroke; stroke: #173a34; stroke-width: 5; }
+    .game-spatial-die-captured { opacity: .58; }
+    .game-die-replay-attacker .game-spatial-die-shape { stroke: #ffb55f; stroke-width: 8; }
+    .game-die-replay-target .game-spatial-die-shape { stroke: #6de4ff; stroke-width: 8; stroke-dasharray: 10 6; }
+    .game-die-replay-changed .game-spatial-die-shape { stroke: #ffe36e; stroke-width: 8; stroke-dasharray: 3 5; }
+    .game-spatial-attack-connector { stroke: #ffe07a; stroke-width: 7; stroke-dasharray: 14 8; opacity: .9; }
+    .game-spatial-arrowhead { fill: #ffe07a; }
+    .game-spatial-attack-label { fill: #ffe07a; font-size: 24px; text-anchor: middle; }
     .game-board > .game-player { min-width: 0; }
     .game-event-current-step { border-left: .35rem solid #806600; background: #fff3cd; font-weight: 600; }
     .game-event-action[role="button"] { cursor: pointer; }
@@ -149,13 +136,8 @@
         flex-basis: 100%;
         overflow-wrap: anywhere;
       }
-      .game-flat-field { gap: .35rem; padding: .4rem; }
-      .game-flat-side h2 { font-size: .95rem; }
-      .game-flat-captured-pile { max-width: 5rem; padding-left: .3rem; }
-      .game-flat-active-dice, .game-flat-captured-dice { gap: .3rem; }
       .game-player { min-width: 0; }
-      .game-die { min-width: 4rem; overflow-wrap: anywhere; }
-      .game-die-value { font-size: 1.5rem; }
+      .game-spatial-board { max-height: none; }
       .game-event { overflow-wrap: anywhere; }
       .game-play-area {
         height: calc(100dvh - 8rem);
