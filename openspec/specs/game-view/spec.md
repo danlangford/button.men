@@ -151,7 +151,7 @@ The game view SHALL let a viewer step backward and forward through the action-lo
 - **THEN** no attack, pass or other game action can be submitted until they return to the current state
 
 ### Requirement: Attack steps are obvious
-For a step that shows an attack, the game view SHALL clearly designate the dice that attacked, the dice that were targeted, the direction from attackers to targets, and the type of attack, using more than colour alone, in both the 3D and spatial 2D dice presentations. Attacker and target dice SHALL be visually prominent through labels and emphasis such as an outline, enlargement, or foreground placement. In the spatial 2D presentation, directional connectors SHALL originate at the attacking dice and terminate at the targeted dice so that every involved die is visibly connected to the attack.
+For an attack step, both the 3D and spatial 2D presentations SHALL identify attacking dice, targeted dice, attack direction, and attack type using more than colour alone. Attacker and target dice SHALL also have text labels and visual emphasis. The spatial 2D presentation SHALL draw directional connectors from attacking dice to targeted dice so every involved die is connected.
 
 #### Scenario: Attack displayed
 - **WHEN** a viewer steps to an attack
