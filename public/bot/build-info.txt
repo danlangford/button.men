@@ -1,6 +1,6 @@
-Artifact: bmair-0.28.0-webassembly-wasm32-wasip1-release.wasm
-Version: bmair 0.28.0 (bmair-v0.28.0-0-g8c1c4c2; release)
-Git-Commit: 8c1c4c2f3a6e5cb98188320ce76f9e9ddbc254f5
+Artifact: bmair-0.32.0-webassembly-wasm32-wasip1-release.wasm
+Version: bmair 0.32.0 (bmair-v0.32.0-0-g84ea5b1; release)
+Git-Commit: 84ea5b181d91e283fd408eb3ffc71765b4b858f1
 Git-Ref: refs/heads/rust
 Platform: WebAssembly
 Architecture: wasm32

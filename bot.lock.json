@@ -1,22 +1,22 @@
 {
-  "release": "bmair-v0.28.0",
-  "url": "https://github.com/danlangford/bmai/releases/download/bmair-v0.28.0/bmair-0.28.0-web-release.zip",
-  "sha256": "e88dd551e282b81e19f304b7404b9993096a00e7d7f4c42b503f40d232b996f1",
+  "release": "bmair-v0.32.0",
+  "url": "https://github.com/danlangford/bmai/releases/download/bmair-v0.32.0/bmair-0.32.0-web-release.zip",
+  "sha256": "6b492600e179424442b701e56b2acbce76d1546d059c4742221daa1b0bc7c86c",
   "files": {
     "LICENSE.txt": "93f6ee0ddf392bf74bb83aa03c2fb07184a2aaeddee678b64a11fe4118e525a4",
     "README.txt": "882612cb0a0362f43ba092a8a313312edc50436ca5d99920287840e8dda6f4d9",
-    "app-0420b4f68e33/app.js": "88343fd32e4535f5b478e820ed2c6f1f523fbff600fa6fb372727f7bd78f0d96",
-    "app-0420b4f68e33/arguments.js": "de7164c90afe1294e85dc0052549e6eb7a5ef5b95d4a160519444e49b5cc2193",
-    "app-0420b4f68e33/bmair.wasm": "d655b70b6489e6f75f0f33aa8edba30f166945d83f478e38d7ea2e53b85d36c0",
-    "app-0420b4f68e33/examples/fight.txt": "d573d0ae9c2464285c480f60bcd0dd0f9d800185210412f44b0eb5b2ec9250b2",
-    "app-0420b4f68e33/examples/preround.txt": "cb5060d3f46c61af916e3ea30f8e8b6e8fcf880d6913a07ad864876b2f8d0451",
-    "app-0420b4f68e33/examples/session.jsonl": "65a52b486dba61643ee4cc81ca894b031b7054fb1727520ec73f687bb5edac97",
-    "app-0420b4f68e33/examples/value.txt": "0f2a8ec18fd769d8eeaf252a751fa991f7c42047f87efeaa2345d7bdd7fc6777",
-    "app-0420b4f68e33/gauntlet.js": "34fb291e541c39ca5c3d76baead08202f66dcaaa1aad688912ebd3b66de62eef",
-    "app-0420b4f68e33/style.css": "349d101c93cfef6d0894ecd037e18947fb2be8432d3b160edd121234a4036555",
-    "app-0420b4f68e33/wasi.js": "fc5a9ff3aca1726c6fd9d706cd6f525a71862d522ea9dc89b3ac7f9f41930165",
-    "app-0420b4f68e33/worker.js": "e820a67cee31cd2db0308dc90bbc95b2b8450072372c4bdc33963ef479bcdad2",
-    "build-info.txt": "67922ba45acc2c7aaafc0334bd7fb4666ab19c719b8fdaafc49cd85150787ad7",
-    "index.html": "c2b44ceb6fdf4d5d1679ee35705af2c21d898b32364462a877b0d7b36290d739"
+    "app-a6f33f6ba5b3/app.js": "88343fd32e4535f5b478e820ed2c6f1f523fbff600fa6fb372727f7bd78f0d96",
+    "app-a6f33f6ba5b3/arguments.js": "de7164c90afe1294e85dc0052549e6eb7a5ef5b95d4a160519444e49b5cc2193",
+    "app-a6f33f6ba5b3/bmair.wasm": "7961014349e195fbd6417d2b0e0d157aada06f302f5bebe9aa67e331fb449d1f",
+    "app-a6f33f6ba5b3/examples/fight.txt": "d573d0ae9c2464285c480f60bcd0dd0f9d800185210412f44b0eb5b2ec9250b2",
+    "app-a6f33f6ba5b3/examples/preround.txt": "cb5060d3f46c61af916e3ea30f8e8b6e8fcf880d6913a07ad864876b2f8d0451",
+    "app-a6f33f6ba5b3/examples/session.jsonl": "65a52b486dba61643ee4cc81ca894b031b7054fb1727520ec73f687bb5edac97",
+    "app-a6f33f6ba5b3/examples/value.txt": "0f2a8ec18fd769d8eeaf252a751fa991f7c42047f87efeaa2345d7bdd7fc6777",
+    "app-a6f33f6ba5b3/gauntlet.js": "34fb291e541c39ca5c3d76baead08202f66dcaaa1aad688912ebd3b66de62eef",
+    "app-a6f33f6ba5b3/style.css": "349d101c93cfef6d0894ecd037e18947fb2be8432d3b160edd121234a4036555",
+    "app-a6f33f6ba5b3/wasi.js": "fc5a9ff3aca1726c6fd9d706cd6f525a71862d522ea9dc89b3ac7f9f41930165",
+    "app-a6f33f6ba5b3/worker.js": "e820a67cee31cd2db0308dc90bbc95b2b8450072372c4bdc33963ef479bcdad2",
+    "build-info.txt": "c36b3fd0abfb1f09187a882d3f1db600bba70100860bd1ee3f58a0375b9a9534",
+    "index.html": "a45a2344afe89527ca10f4a2031e386c332f08e1634233d953ec469448b216bb"
   }
 }
