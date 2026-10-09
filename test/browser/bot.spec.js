@@ -23,3 +23,12 @@ test('the Button Men AI answers a position in the browser without sending it any
     expect(request.method(), request.url()).toBe('GET');
   }
 });
+
+test('the site navigation leads to the Button Men AI before anyone logs in', async ({ page }) => {
+  await page.goto('/');
+  const link = page.getByRole('navigation').getByRole('link', { name: 'Bot' });
+  await expect(link).toBeVisible();
+  await link.click();
+  await expect(page).toHaveURL(/\/bot\/$/);
+  await expect(page.locator('#version')).toHaveText(version);
+});

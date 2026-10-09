@@ -35,6 +35,17 @@ test('bot: Open the AI - /bot serves the release page and the engine it loads', 
   assert.equal(served, 'https://button.men/bot/');
 });
 
+test('bot: Find the AI - every page links to /bot right after its specifications entry', () => {
+  const specifications = /<a class="btn btn-sm btn-outline-primary" href="\/specs\/">Specifications<\/a>|<span class="navbar-text">Specifications<\/span>/;
+  const bot = '<a class="btn btn-sm btn-outline-primary" href="/bot/">Bot</a>';
+  for (const page of ['public/index.html', 'public/about.html', 'public/specs/index.html']) {
+    const nav = /<nav\b[\s\S]*?<\/nav>/.exec(read(page))[0];
+    const entry = specifications.exec(nav);
+    assert.ok(entry, `${page} has a specifications entry`);
+    assert.equal(nav.slice(entry.index + entry[0].length).trimStart().slice(0, bot.length), bot, page);
+  }
+});
+
 test('bot: Preview a pull request - previews deploy the pull request\'s public/, which holds /bot', () => {
   const source = resolve('pr-source');
   const config = previewConfig({ prNumber: 7, sourceDir: source });

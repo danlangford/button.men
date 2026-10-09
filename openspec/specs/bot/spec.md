@@ -37,3 +37,14 @@ The site SHALL serve one published BMAIR release, unmodified. The repository SHA
 #### Scenario: Update to a new release
 - **WHEN** a dev updates `/bot` to a newer BMAIR release
 - **THEN** the download is checked against the checksums that release publishes before anything is replaced, and a download that fails the check changes nothing
+
+### Requirement: Linked from the site navigation
+Every button.men page with the site navigation SHALL link to `/bot` beside its link to the specifications, whether or not the visitor is logged in.
+
+#### Scenario: Find the AI
+- **WHEN** a visitor looks at the site navigation on any page
+- **THEN** a link to the AI sits beside the specifications link
+
+#### Scenario: Follow the link
+- **WHEN** a visitor follows that link
+- **THEN** the BMAIR page opens
