@@ -1,0 +1,10 @@
+game
+fight
+player 0 2 0
+12:12
+4:3
+player 1 2 0
+I15:15
+4:4
+getaction
+quit

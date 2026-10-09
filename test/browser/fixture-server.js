@@ -16,6 +16,9 @@ const CONTENT_TYPES = {
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
+  '.jsonl': 'text/plain; charset=utf-8',
+  '.wasm': 'application/wasm',
 };
 
 // Scripted buttonweavers responses, keyed by API call type, for the
