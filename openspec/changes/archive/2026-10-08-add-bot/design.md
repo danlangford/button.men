@@ -2,33 +2,42 @@
 
 ## Context
 
-BMAIR ([danlangford/bmai](https://github.com/danlangford/bmai)) publishes `bmair-VERSION-web-release.zip` with each release: a static site whose files sit at the zip root, with relative links, an `index.html`, and scripts and the WebAssembly engine in a content-hashed `app-<hash>/` folder. The release also publishes `SHA256SUMS` covering every asset. button.men is a Cloudflare Worker whose static assets come from `public/`; production deploys `public/` from `main`, and each pull request preview deploys the pull request's own `public/` using `main`'s trusted scripts (`scripts/preview.js`).
+BMAIR ([danlangford/bmai](https://github.com/danlangford/bmai)) publishes `bmair-VERSION-web-release.zip` with each release: a static site whose files sit at the zip root, with relative links, an `index.html`, and scripts and the WebAssembly engine in a content-hashed `app-<hash>/` folder. Its releases are immutable once published, GitHub records a SHA-256 digest for every asset, and each release also publishes `SHA256SUMS`. button.men is a Cloudflare Worker that runs before its static assets (`run_worker_first`) and serves them from `public/`. Production deploys `public/` from `main` once CI passes; each pull request preview deploys the pull request's own `public/` with `main`'s trusted scripts (`scripts/preview.js`).
 
 ## Goals / Non-Goals
 
 **Goals:**
 - Serve an exact BMAIR release at `/bot` in production and in every preview.
-- Make the deployed release, and any change to it, visible and verifiable in review.
+- Prove in CI that `/bot` is that release, not just that it matches a manifest.
+- Keep `/bot` away from the player's session, even though it shares the site's origin.
 - Keep updates to one command.
 
 **Non-Goals:**
 - Building BMAIR here, or modifying its files.
-- Linking `/bot` from the main navigation; that is a separate product decision.
 - Any server-side component: BMAIR runs in the browser.
 
 ## Decisions
 
-- **Commit the release's files under `public/bot/`.** Both deploy paths already publish `public/`, so production and previews serve `/bot` with no workflow change, and a pull request's own preview shows its BMAIR. Fetching the release at deploy time instead would add a network dependency to every deploy, and previews could not show a new release until `main`'s preview script learned to fetch it. The cost is about 300 KB of compressed history per release.
-- **`bot.lock.json` records the release, its download URL, the zip's SHA-256, and every file's SHA-256.** `test/bot.test.js` hashes `public/bot/` and requires an exact match, so a hand edit, a stray file, or a partial update fails CI before deploy. The release name and zip checksum let a reviewer check the lock against GitHub.
-- **`npm run update-bot -- VERSION` (`scripts/update-bot.js`) does the update.** It downloads the zip and the release's `SHA256SUMS`, refuses a mismatch before touching `public/bot/`, extracts with the system `unzip` (which drops `..` and leading `/` from entry names), rejects anything but plain files, and rewrites the directory and lock together. Node has no built-in zip reader, and `unzip` is present on macOS and GitHub's runners, so no dependency is added.
-- **The page's own protections stay as shipped.** Its Content-Security-Policy limits loads to its own origin and allows WebAssembly compilation; the engine has no file or network access. Cloudflare serves assets with `max-age=0, must-revalidate`, and the hashed folder keeps one release's files together, so a redeploy never mixes releases. Observed with `wrangler dev`: `/bot` redirects to `/bot/`, `.wasm` is served as `application/wasm`.
-- **ESLint ignores `public/bot/`.** The files are BMAIR's, linted and tested in its repository; the drift test is what guards them here.
+- **Commit the release's files under `public/bot/`.** Both deploy paths already publish `public/`, so production and previews serve `/bot` with no workflow change, and a pull request's own preview shows its BMAIR. Fetching the release at deploy time would add a network dependency to every deploy, and previews could not show a new release until `main`'s preview script learned to fetch it. The cost is about 300 KB of compressed history per release.
+- **`bot.lock.json` names the release, its URL, the zip's SHA-256, and every file's SHA-256; CI re-derives all of it.** `npm test` checks `public/bot/` against the lock, which catches an accidental edit offline. On its own that proves nothing about the release, because a lock regenerated after an edit still matches. So CI runs `node scripts/update-bot.js --verify`: it requires the release to be immutable, downloads the zip, requires its SHA-256 to equal GitHub's recorded digest, the release's `SHA256SUMS` entry and the lock, extracts it, and requires both the lock's file list and `public/bot/` to be exactly its contents. Deploys wait for CI, so production can't serve anything else. Previews deploy without waiting for CI, as they always have.
+- **`npm run update-bot -- VERSION` (`scripts/update-bot.js`) installs a release with the same checks.** Nothing under `public/bot/` changes until every check passes. It extracts with the system `unzip`, which drops `..` from entry names and fails on absolute ones. The updater treats any `unzip` warning as a failure, rejects anything but plain files (so no symlinks), and requires `index.html` at the root. Node has no built-in zip reader, and `unzip` ships with macOS and GitHub's runners, so no dependency is added. Committed fixture zips in `test/fixtures/bot/` exercise each rejection.
+- **The Worker, not the release, sets `/bot`'s security policy.** `/bot` shares the origin of the main app: same-origin requests carry the player's session cookie, and the `/api/responder` Origin check only stops other sites. The release's own meta policy allows same-origin requests and doesn't apply to its module workers, which take policy only from their own response headers. `src/bot.js` therefore adds headers to every `/bot` response, workers included:
+  - `connect-src` is limited to `/bot/`, so neither the page nor its workers can call `/api/responder`, fetch other pages, or contact other sites.
+  - `frame-src 'none'` keeps it from framing and scripting the main app.
+  - `Cross-Origin-Opener-Policy: same-origin` cuts its access to any window it opens.
+  - `form-action`, `base-uri` and `object-src` are closed, and `frame-ancestors 'none'` stops others framing it.
+
+  Headers aren't files, so the release stays unmodified. The browser fixture server applies the same headers, and a browser test shows the page can't reach the API, the app, or another site.
+- **What `/bot` could still do, if a release turned hostile:** read and write `localStorage`, which holds only the theme choice, and navigate its own tab. It can't use the session, which is HttpOnly and reachable only through `/api/responder`. A separate origin such as `bot.button.men` would remove even that, at the cost of the `/bot` address.
+- **Cache the content-hashed folder for good.** Every request passes through the Worker and counts toward the free plan's 100,000 a day. A gauntlet starts one worker per core, and each loads the engine's three files; revalidating them costs about three requests per core per gauntlet, 63 for a page load and gauntlet on 18 cores. `/bot/app-<hash>/` is named for its contents, so the Worker marks successful responses there `immutable` for a year. Under `wrangler dev`, a cold page load plus a gauntlet on 18 workers then took 10 requests, and further gauntlets none. That is about the cost of an ordinary visit, inside the free allowance the hosting spec relies on.
+- **ESLint ignores `public/bot/`, and `.gitattributes` keeps it byte for byte.** The files are BMAIR's, linted and tested in its repository. Line-ending conversion on a Windows clone would otherwise change them.
 
 ## Risks / Trade-offs
 
-- [A future release changes its zip layout] → The update refuses a zip without a root `index.html`, and the browser test runs the page end to end.
-- [`unzip` missing on a dev machine] → The update fails with a clear message and changes nothing; only updates need it, not builds or tests.
-- [Binary history grows with each release] → Small (about 300 KB per release); a fetch-at-deploy design can replace it later without changing the spec.
+- [`SHA256SUMS` and the digest prove the download is what the release published, not who built it] → The release must be immutable and was published by bmai's release workflow. Build-provenance attestations in bmai, checked here with `gh attestation verify`, would tie the zip to a workflow run and commit.
+- [A tab left open across an update can't start gauntlet workers, because the previous `app-<hash>/` folder is gone] → Reloading fixes it. Files the visitor already has stay cached, so only an uncached file fails.
+- [`unzip` missing on a dev machine] → The updater and its tests fail with a clear message. Building, serving and the other tests don't need it.
+- [Binary history grows with each release] → Small, about 300 KB per release. A fetch-at-deploy design can replace it later without changing the spec.
 
 ## Migration Plan
 
@@ -36,4 +45,4 @@ Merge to deploy. Rollback is a revert, or `npm run update-bot -- <older version>
 
 ## Open Questions
 
-- Should the main navigation or About page link to `/bot`?
+- Would a separate origin for the AI (for example `bot.button.men`) be worth giving up the `/bot` address? It is the only complete isolation from the session.

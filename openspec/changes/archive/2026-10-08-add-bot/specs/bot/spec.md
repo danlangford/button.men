@@ -18,11 +18,15 @@ The site SHALL serve the BMAIR web page at `/bot`, on `button.men` and on every 
 - **THEN** `/bot` on its preview hostname serves the BMAIR that pull request contains
 
 ### Requirement: The AI runs in the visitor's browser
-BMAIR at `/bot` SHALL compute in the visitor's browser and SHALL NOT send the positions, settings or results a visitor enters to button.men, buttonweavers or any other server.
+BMAIR at `/bot` SHALL compute in the visitor's browser. It SHALL NOT send the positions, settings or results a visitor enters to button.men, buttonweavers or any other server, and SHALL NOT be able to act with the visitor's button.men session.
 
 #### Scenario: Ask for a move
 - **WHEN** a visitor runs a position on `/bot`
 - **THEN** the AI's answer appears, and the position is not sent to any server
+
+#### Scenario: The page reaches for a server
+- **WHEN** the AI page, or anything it runs, tries to call the buttonweavers API through button.men, load another button.men page, or contact another site
+- **THEN** the browser refuses
 
 ### Requirement: A pinned, verifiable BMAIR release
 The site SHALL serve one published BMAIR release, unmodified. The repository SHALL name that release and record checksums that let anyone verify the served files against it.
@@ -32,9 +36,9 @@ The site SHALL serve one published BMAIR release, unmodified. The repository SHA
 - **THEN** it names the BMAIR release served at `/bot`, where it was downloaded from, and the download's checksum
 
 #### Scenario: Served files drift from the release
-- **WHEN** a file served at `/bot` differs from the recorded release, or a file is added or missing
-- **THEN** the checks fail before the change can deploy
+- **WHEN** a file served at `/bot` differs from the published release the repository names, or a file is added or missing
+- **THEN** the checks fail, and the change cannot deploy to `button.men`
 
-#### Scenario: Update to a new release
-- **WHEN** a dev updates `/bot` to a newer BMAIR release
-- **THEN** the download is checked against the checksums that release publishes before anything is replaced, and a download that fails the check changes nothing
+#### Scenario: Update to another release
+- **WHEN** a dev changes `/bot` to another published BMAIR release
+- **THEN** the files are verified against that release as published before anything is replaced, and anything that fails verification changes nothing
