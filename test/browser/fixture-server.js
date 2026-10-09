@@ -7,6 +7,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { botHeaders, isBotPath } from '../../src/bot.js';
 
 const root = fileURLToPath(new URL('../../public/', import.meta.url));
 const port = Number(process.env.PORT) || 4173;
@@ -31,8 +32,20 @@ function apiResponse(args) {
   return { status: 'failed', message: `No fixture for ${args.type}` };
 }
 
+// Like the Worker, /bot responses carry the policy that keeps the AI to itself.
+function headersFor(req, status, headers) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  if (!isBotPath(url.pathname)) return headers;
+  return Object.fromEntries(botHeaders(url, status, new Headers(headers)));
+}
+
 async function serveStatic(req, res) {
   let pathname = decodeURIComponent(new URL(req.url, `http://${req.headers.host}`).pathname);
+  // Cloudflare's assets redirect a folder without its slash, which relative links rely on.
+  if (pathname === '/bot') {
+    res.writeHead(307, headersFor(req, 307, { Location: '/bot/' })).end();
+    return;
+  }
   if (pathname.endsWith('/')) pathname += 'index.html';
   const filePath = normalize(join(root, pathname));
   if (!filePath.startsWith(root)) {
@@ -41,7 +54,7 @@ async function serveStatic(req, res) {
   }
   try {
     const body = await readFile(filePath);
-    res.writeHead(200, { 'Content-Type': CONTENT_TYPES[extname(filePath)] || 'application/octet-stream' });
+    res.writeHead(200, headersFor(req, 200, { 'Content-Type': CONTENT_TYPES[extname(filePath)] || 'application/octet-stream' }));
     res.end(body);
   } catch {
     // Pages like /about have no extension in their links; the main app is
