@@ -17,14 +17,14 @@ The site SHALL serve the BMAIR web page at `/bot`, on `button.men` and on every 
 - **THEN** `/bot` on its preview hostname serves the BMAIR that pull request contains
 
 ### Requirement: The AI runs in the visitor's browser
-BMAIR at `/bot` SHALL compute in the visitor's browser. It SHALL NOT send the positions, settings or results a visitor enters to button.men, buttonweavers or any other server, and SHALL NOT be able to act with the visitor's button.men session.
+BMAIR at `/bot` SHALL compute in the visitor's browser. It SHALL NOT send the positions, settings or results a visitor enters to button.men, buttonweavers or any other server, and SHALL NOT be able to make requests with the visitor's button.men session.
 
 #### Scenario: Ask for a move
 - **WHEN** a visitor runs a position on `/bot`
 - **THEN** the AI's answer appears, and the position is not sent to any server
 
 #### Scenario: The page reaches for a server
-- **WHEN** the AI page, or anything it runs, tries to call the buttonweavers API through button.men, load another button.men page, or contact another site
+- **WHEN** the AI page, or anything it runs, tries to connect to the buttonweavers API through button.men, to another button.men page or to another site, or to script a button.men page it frames or opens
 - **THEN** the browser refuses
 
 ### Requirement: A pinned, verifiable BMAIR release

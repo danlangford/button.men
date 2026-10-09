@@ -6,14 +6,15 @@ const CONTENT_HASHED = /^\/bot\/app-[0-9a-f]+\//;
 export const isBotPath = (pathname) => pathname === '/bot' || pathname.startsWith('/bot/');
 
 export function botPolicy(origin) {
+  // Only its own files: no /api/responder, no app scripts, and nowhere else.
+  const bot = `${origin}/bot/`;
   return [
-    "default-src 'self'",
-    "script-src 'self' 'wasm-unsafe-eval'",
-    "worker-src 'self'",
-    "style-src 'self'",
-    "img-src 'self' data:",
-    // Only its own files: no /api/responder, and nowhere else.
-    `connect-src ${origin}/bot/`,
+    `default-src ${bot}`,
+    `script-src ${bot} 'wasm-unsafe-eval'`,
+    `worker-src ${bot}`,
+    `style-src ${bot}`,
+    `img-src ${bot} data:`,
+    `connect-src ${bot}`,
     "frame-src 'none'",
     "frame-ancestors 'none'",
     "object-src 'none'",
@@ -25,7 +26,8 @@ export function botPolicy(origin) {
 /** Adds the /bot policy, and long caching for the content-hashed folder, to a response's headers. */
 export function botHeaders(url, status, headers) {
   headers.set('Content-Security-Policy', botPolicy(url.origin));
-  // A window /bot opens, such as the main app, can't be scripted from it.
+  // A window /bot opens can't be scripted from it, unless that page also sends
+  // this same policy; test/bot.test.js keeps the main app from doing so.
   headers.set('Cross-Origin-Opener-Policy', 'same-origin');
   if (CONTENT_HASHED.test(url.pathname) && (status === 200 || status === 304)) {
     // Each shard worker loads the engine; cached, they don't spend the Worker's request quota.

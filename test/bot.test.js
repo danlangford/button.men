@@ -49,12 +49,16 @@ test('bot: Ask for a move - /bot and its workers may reach only /bot itself', as
     const policy = response.headers.get('Content-Security-Policy');
     assert.equal(policy, botPolicy('https://button.men'), path);
     assert.match(policy, /connect-src https:\/\/button\.men\/bot\/;/);
-    assert.doesNotMatch(policy, /api|\*/);
+    assert.match(policy, /script-src https:\/\/button\.men\/bot\/ 'wasm-unsafe-eval';/);
+    assert.match(policy, /worker-src https:\/\/button\.men\/bot\/;/);
+    assert.doesNotMatch(policy, /'self'|api|\*/);
     assert.match(policy, /frame-src 'none'/);
     assert.equal(response.headers.get('Cross-Origin-Opener-Policy'), 'same-origin', path);
   }
   const app = await worker.fetch(new Request('https://button.men/'), { ASSETS: assets() });
   assert.equal(app.headers.get('Content-Security-Policy'), null);
+  // /bot's opener policy isolates the windows it opens only while they don't send the same one.
+  assert.notEqual(app.headers.get('Cross-Origin-Opener-Policy'), 'same-origin');
 });
 
 test('bot: the content-hashed release folder is cached for good, everything else revalidates', async () => {

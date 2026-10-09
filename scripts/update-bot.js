@@ -105,7 +105,8 @@ function extract(zip, asset) {
     // unzip drops `..` from entry names and fails on absolute ones, so
     // nothing lands outside `site`; any warning counts as a failure here.
     const unzip = spawnSync('unzip', ['-q', archive, '-d', site], { stdio: 'inherit' });
-    if (unzip.error || unzip.status !== 0) throw new Error(`unzip could not extract ${asset} cleanly`);
+    if (unzip.error) throw new Error(`unzip is needed to extract ${asset}: ${unzip.error.message}`);
+    if (unzip.status !== 0) throw new Error(`unzip could not extract ${asset} cleanly`);
     const files = fileHashes(site);
     if (!files['index.html']) throw new Error(`${asset} has no index.html at its root`);
     return { work, site, files };

@@ -49,9 +49,41 @@ test('the AI page cannot reach the player\'s session or any other site', async (
         document.body.append(frame);
         setTimeout(() => resolve('blocked'), 1000);
       }),
+      appScript: await new Promise((resolve) => {
+        const worker = new globalThis.Worker('/js/config.js', { type: 'module' });
+        worker.onerror = () => resolve('blocked');
+        setTimeout(() => resolve('started'), 1000);
+      }).catch(() => 'blocked'),
+      // A popup starts as a blank page of the opener's own; only once it loads the app does isolation show.
+      popup: await new Promise((resolve) => {
+        const popup = globalThis.open('/');
+        const started = Date.now();
+        const check = () => {
+          let state;
+          try {
+            state = popup.closed ? 'blocked' : popup.location.href === 'about:blank' ? 'loading' : 'scriptable';
+          } catch {
+            state = 'blocked';
+          }
+          if (state === 'loading' && Date.now() - started < 5000) {
+            setTimeout(check, 100);
+            return;
+          }
+          resolve(state);
+          if (state === 'scriptable') popup.close();
+        };
+        check();
+      }),
     };
   });
-  expect(attempts).toEqual({ api: 'blocked', app: 'blocked', elsewhere: 'blocked', frame: 'blocked' });
+  expect(attempts).toEqual({
+    api: 'blocked',
+    app: 'blocked',
+    elsewhere: 'blocked',
+    frame: 'blocked',
+    appScript: 'blocked',
+    popup: 'blocked',
+  });
 });
 
 test('the site navigation leads to the Button Men AI before anyone logs in', async ({ page }) => {
