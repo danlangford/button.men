@@ -1,5 +1,7 @@
 // Serves the site, redirects http to https, and hands API calls to the proxy.
-// Workers only allow handlers as exports here; everything else is in proxy.js.
+// Workers only allow handlers as exports here; everything else is in proxy.js
+// and bot.js.
+import { isBotPath, serveBot } from './bot.js';
 import { proxy } from './proxy.js';
 
 export default {
@@ -16,6 +18,7 @@ export default {
       }
       return proxy(request, env.BUTTONWEAVERS_API_ENDPOINT || undefined);
     }
+    if (isBotPath(url.pathname)) return serveBot(request, env.ASSETS);
     return env.ASSETS.fetch(request);
   },
 };

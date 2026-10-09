@@ -4,7 +4,8 @@ import globals from 'globals';
 export default [
   js.configs.recommended,
   {
-    ignores: ['public/specs/specifications.json', 'node_modules/**'],
+    // public/bot is a published BMAIR release, copied unmodified and checked by test/bot.test.js.
+    ignores: ['public/specs/specifications.json', 'public/bot/**', 'node_modules/**'],
   },
   {
     files: ['public/js/**/*.js', 'public/specs/**/*.js'],

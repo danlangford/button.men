@@ -1,0 +1,3 @@
+# Copies of a published BMAIR release must stay byte for byte; see test/bot.test.js.
+public/bot/** -text
+test/fixtures/bot/** -text

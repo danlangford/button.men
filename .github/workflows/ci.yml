@@ -22,6 +22,13 @@ jobs:
         if: hashFiles('package.json') != ''
         run: npm ci
 
+      # The lock only vouches for itself; this re-derives /bot from the release it names.
+      - name: Verify /bot is the published BMAIR release
+        if: hashFiles('bot.lock.json') != ''
+        run: node scripts/update-bot.js --verify
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Lint
         if: hashFiles('package.json') != ''
         run: npm run lint
