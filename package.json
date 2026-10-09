@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-specs.js",
+    "update-bot": "node scripts/update-bot.js",
     "predev": "npm run build",
     "test": "node --test test/*.test.js",
     "lint": "eslint .",

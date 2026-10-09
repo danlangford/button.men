@@ -31,3 +31,15 @@ Needs Node 22+. Run `npm ci` to install the locked dependencies.
 - `npm test` runs the tests.
 - `npm run dev` serves the site at http://localhost:8787, relaying to the real buttonweavers.
 - Pushes to `main` deploy to Cloudflare (`.github/workflows/deploy.yml`).
+
+## The Button Men AI at /bot
+
+[`/bot`](https://button.men/bot) serves [BMAIR](https://github.com/danlangford/bmai), the Button Men AI, which runs entirely in the visitor's browser. `public/bot/` is an unmodified copy of a BMAIR web release, and `bot.lock.json` records which release and the checksum of every file; `npm test` fails if they drift apart.
+
+To move to another release, run this and commit the result:
+
+```shell
+npm run update-bot -- 0.29.0
+```
+
+It downloads that release's web zip, checks it against the release's `SHA256SUMS`, and only then replaces `public/bot/` and the lock. It needs `unzip`, which macOS and most Linux systems include.
