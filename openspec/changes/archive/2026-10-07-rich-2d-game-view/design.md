@@ -29,13 +29,13 @@ Adopt the proposal's SVG-or-canvas suggestion as **SVG**. A dedicated `public/js
 
 ### Use deterministic slots and side-count geometry
 
-The renderer will place each player's active dice into evenly spaced slots in the upper or lower region. Common current side counts map to stable silhouettes and modest relative scales: d4 triangle, d6 square, d8 diamond, d10 pentagon, d12 hexagon, d20 decagon, with d2 and d30 covered by dedicated low/high-complexity silhouettes. Other or unresolved sizes use a circular fallback. Visible value and recipe text remain inside or adjacent to the silhouette, while a complete accessible label carries owner, value, recipe, skills, statuses, activity/capture state, and replay role.
+The renderer will place each player's active dice into evenly spaced slots in the upper or lower region, with equal gaps between dice and at both edges (two dice sit at one third and two thirds of the area, not against its borders). Captured dice sit in a reserved column on the right of each player's region, so attack connectors and the attack label in the middle of the board never cover them, and the column's width stays fixed between replay steps so active dice don't shift as captures accumulate. Common current side counts map to stable silhouettes and modest relative scales: d4 triangle, d6 square, d8 diamond, d10 pentagon, d12 hexagon, d20 decagon, with d2 and d30 covered by dedicated low/high-complexity silhouettes. Other or unresolved sizes use a circular fallback. Visible value and recipe text remain inside or adjacent to the silhouette, while a complete accessible label carries owner, value, recipe, skills, statuses, activity/capture state, and replay role.
 
 This is a visual vocabulary, not a physical projection. Exact polyhedral faces were rejected because a 2D projection becomes unreadable at phone sizes and would add detail that does not improve side-count recognition.
 
 ### Draw connectors from known SVG die centers
 
-Each rendered die receives a stable per-render identifier and center coordinate. On attack steps, the renderer draws marker-ended lines behind the dice for every attacker-to-target pairing, with a visible text label for the attack type. Because dice and connectors share one view box, resizing does not require DOM measurement, observers, or resize listeners. Dashed strokes, arrowheads, and attacker/target labels keep the relationship understandable without colour.
+Each rendered die receives a stable per-render identifier and center coordinate. On attack steps, the renderer draws marker-ended lines behind the dice for every attacker-to-target pairing, with a large visible text label for the attack type drawn above the connectors. The arrowheads alone show direction, so the label names only the attack type. Because dice and connectors share one view box, resizing does not require DOM measurement, observers, or resize listeners. Dashed strokes, arrowheads, and attacker/target labels keep the relationship understandable without colour.
 
 ### Keep integration narrow
 

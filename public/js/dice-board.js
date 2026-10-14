@@ -157,14 +157,22 @@ function renderDie(document, die, owner, state, center, color) {
   return { element: group, ...center, radius, die };
 }
 
-function slotCenters(count, width, y) {
-  if (!count) return [];
-  const padding = 62;
-  const available = width - (padding * 2);
+const SLOT_WIDTH = 108;
+const CAPTURED_CELL = 66;
+const CAPTURED_ROWS = 3;
+const BOARD_MARGIN = 12;
+
+// Spread dice so the gaps between them and the edges are all equal: two dice
+// sit at 1/3 and 2/3 of the area rather than at its borders.
+function slotCenters(count, left, width, y) {
   return Array.from({ length: count }, (_, index) => ({
-    x: count === 1 ? width / 2 : padding + (available * index / (count - 1)),
+    x: left + (width * (index + 1) / (count + 1)),
     y,
   }));
+}
+
+function capturedColumns(count) {
+  return Math.max(2, Math.ceil(count / CAPTURED_ROWS));
 }
 
 function playerName(player, index) {
@@ -178,12 +186,11 @@ function capturedColor(players, playerIndex, die, currentViewerIndex, colors) {
   return playerIndex === currentViewerIndex ? colors.neutralOpponentColor : colors.neutralPlayerColor;
 }
 
-function renderPlayerRegion(document, svg, players, playerIndex, position, width, colors, currentViewerIndex) {
+function renderPlayerRegion(document, svg, players, playerIndex, position, layout, colors, currentViewerIndex) {
   const player = players[playerIndex];
   const top = position === 'top';
   const regionY = top ? 18 : 322;
-  const activeY = top ? 132 : 494;
-  const capturedY = top ? 252 : 374;
+  const activeY = regionY + 150;
   const name = playerName(player, playerIndex);
   const region = svgElement(document, 'g', {
     class: `game-spatial-region game-spatial-region-${position}`,
@@ -193,7 +200,7 @@ function renderPlayerRegion(document, svg, players, playerIndex, position, width
   });
   region.append(
     svgElement(document, 'rect', {
-      class: 'game-spatial-region-background', x: 12, y: regionY, width: width - 24, height: 280, rx: 22,
+      class: 'game-spatial-region-background', x: BOARD_MARGIN, y: regionY, width: layout.width - (BOARD_MARGIN * 2), height: 280, rx: 22,
     }),
     svgElement(document, 'text', {
       class: 'game-spatial-player-name', x: 30, y: regionY + 32,
@@ -202,7 +209,7 @@ function renderPlayerRegion(document, svg, players, playerIndex, position, width
 
   const activeDice = list(player.activeDieArray);
   const activeGroup = svgElement(document, 'g', { class: 'game-spatial-active-dice' });
-  const rendered = slotCenters(activeDice.length, width, activeY).map((center, index) => {
+  const rendered = slotCenters(activeDice.length, BOARD_MARGIN, layout.activeWidth, activeY).map((center, index) => {
     const item = renderDie(document, activeDice[index], name, 'active', center, player.playerColor);
     activeGroup.append(item.element);
     return item;
@@ -215,22 +222,31 @@ function renderPlayerRegion(document, svg, players, playerIndex, position, width
       class: 'game-spatial-captured-pile',
       'aria-label': `Captured by ${name}`,
     });
+    const pileX = BOARD_MARGIN + layout.activeWidth;
+    const pileWidth = layout.capturedWidth - 10;
     capturedGroup.append(
+      svgElement(document, 'title', {}, `Captured by ${name}`),
       svgElement(document, 'rect', {
-        class: 'game-spatial-captured-background', x: 22, y: capturedY - 45, width: width - 44, height: 88, rx: 16,
+        class: 'game-spatial-captured-background', x: pileX, y: regionY + 12, width: pileWidth, height: 256, rx: 16,
       }),
       svgElement(document, 'text', {
-        class: 'game-spatial-captured-label', x: 34, y: capturedY - 17,
-      }, `Captured by ${name}`),
+        class: 'game-spatial-captured-label', x: pileX + (pileWidth / 2), y: regionY + 40, 'text-anchor': 'middle',
+      }, 'Captured'),
     );
-    slotCenters(capturedDice.length, width, capturedY).forEach((center, index) => {
+    const columns = capturedColumns(capturedDice.length);
+    const gridLeft = pileX + ((pileWidth - (columns * CAPTURED_CELL)) / 2);
+    capturedDice.forEach((capturedDie, index) => {
+      const center = {
+        x: gridLeft + (CAPTURED_CELL * ((index % columns) + 0.5)),
+        y: regionY + 92 + (CAPTURED_CELL * Math.floor(index / columns)),
+      };
       const item = renderDie(
         document,
-        capturedDice[index],
-        players[capturedDice[index].originalPlayerIndex]?.playerName || 'opponent',
+        capturedDie,
+        players[capturedDie.originalPlayerIndex]?.playerName || 'opponent',
         'captured',
-        { x: center.x, y: center.y + 8 },
-        capturedColor(players, playerIndex, capturedDice[index], currentViewerIndex, colors),
+        center,
+        capturedColor(players, playerIndex, capturedDie, currentViewerIndex, colors),
       );
       item.element.setAttribute('transform', `translate(${item.x} ${item.y}) scale(.58)`);
       capturedGroup.append(item.element);
@@ -242,7 +258,7 @@ function renderPlayerRegion(document, svg, players, playerIndex, position, width
   return rendered;
 }
 
-function appendAttackConnectors(document, svg, renderedDice, attackType) {
+function appendAttackConnectors(document, svg, renderedDice, attackType, layout) {
   const attackers = renderedDice.filter(({ die }) => die.replayRole === 'attacker');
   const targets = renderedDice.filter(({ die }) => die.replayRole === 'target');
   if (!attackType || !attackers.length || !targets.length) return;
@@ -261,25 +277,24 @@ function appendAttackConnectors(document, svg, renderedDice, attackType) {
       'aria-hidden': 'true',
     }));
   }));
-  connectors.append(svgElement(document, 'text', {
-    class: 'game-spatial-attack-label', x: '50%', y: 316, 'text-anchor': 'middle',
-  }, `${attackType} attack · attackers → targets`));
   const firstRegion = [...svg.children].find((child) => child.getAttribute?.('class')?.includes('game-spatial-region'));
   if (firstRegion && svg.insertBefore) svg.insertBefore(connectors, firstRegion);
   else svg.append(connectors);
+  svg.append(svgElement(document, 'text', {
+    class: 'game-spatial-attack-label', x: BOARD_MARGIN + (layout.activeWidth / 2), y: 320, 'text-anchor': 'middle',
+  }, `${attackType} attack`));
 }
 
 export function renderDiceBoard(document, players, options = {}) {
   const bottomPlayerIndex = options.bottomPlayerIndex ?? 0;
   const topPlayerIndex = 1 - bottomPlayerIndex;
-  const maxDice = Math.max(
-    5,
-    ...players.map((player) => Math.max(
-      list(player.activeDieArray).length,
-      list(player.replayCapturedDieArray).length,
-    )),
-  );
-  const width = Math.max(600, (maxDice * 108) + 60);
+  const maxActive = Math.max(4, ...players.map((player) => list(player.activeDieArray).length));
+  const maxCaptured = Math.max(0, ...players.map((player) => list(player.replayCapturedDieArray).length));
+  // The captured column is always reserved so dice don't shift as replay steps add captures.
+  const activeWidth = (maxActive + 1) * SLOT_WIDTH;
+  const capturedWidth = (capturedColumns(maxCaptured) * CAPTURED_CELL) + 30;
+  const layout = { activeWidth, capturedWidth, width: activeWidth + capturedWidth + (BOARD_MARGIN * 2) };
+  const width = layout.width;
   const svg = svgElement(document, 'svg', {
     class: 'game-spatial-board',
     viewBox: `0 0 ${width} 620`,
@@ -300,9 +315,9 @@ export function renderDiceBoard(document, players, options = {}) {
     neutralPlayerColor: options.neutralPlayerColor || '#cccccc',
   };
   const renderedDice = [
-    ...renderPlayerRegion(document, svg, players, topPlayerIndex, 'top', width, colors, options.currentViewerIndex ?? null),
-    ...renderPlayerRegion(document, svg, players, bottomPlayerIndex, 'bottom', width, colors, options.currentViewerIndex ?? null),
+    ...renderPlayerRegion(document, svg, players, topPlayerIndex, 'top', layout, colors, options.currentViewerIndex ?? null),
+    ...renderPlayerRegion(document, svg, players, bottomPlayerIndex, 'bottom', layout, colors, options.currentViewerIndex ?? null),
   ];
-  appendAttackConnectors(document, svg, renderedDice, options.attackType);
+  appendAttackConnectors(document, svg, renderedDice, options.attackType, layout);
   return svg;
 }

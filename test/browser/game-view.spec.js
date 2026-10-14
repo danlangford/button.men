@@ -153,7 +153,7 @@ test('replay links select a step and invalid steps fall back to the current game
   await page.getByRole('button', { name: 'Show 2D game view' }).click();
   await expect(page.locator('.game-die-replay-attacker')).toBeVisible();
   await expect(page.locator('.game-die-replay-target')).toBeVisible();
-  await expect(page.locator('.game-spatial-attack-label')).toContainText('Skill attack · attackers → targets');
+  await expect(page.locator('.game-spatial-attack-label')).toHaveText('Skill attack');
   await expect(page.locator('.game-spatial-attack-connector')).toHaveCount(1);
   await expect(page.locator('.game-spatial-captured-pile')).toHaveCount(0);
   await page.getByRole('button', { name: 'Next step' }).click();
@@ -162,10 +162,7 @@ test('replay links select a step and invalid steps fall back to the current game
   const capturedRegion = page.locator('.game-spatial-region:has(.game-spatial-captured-pile)');
   const capturedPile = await capturedRegion.locator('.game-spatial-captured-pile').boundingBox();
   const activeDice = await capturedRegion.locator('.game-spatial-active-dice').boundingBox();
-  expect(
-    capturedPile.y + capturedPile.height <= activeDice.y + 1 ||
-    activeDice.y + activeDice.height <= capturedPile.y + 1,
-  ).toBeTruthy();
+  expect(capturedPile.x).toBeGreaterThanOrEqual(activeDice.x + activeDice.width - 1);
   const opponentInfo = await page.locator('.game-player-1').boundingBox();
   const spatialBoard = await page.locator('.game-spatial-board').boundingBox();
   const playerInfo = await page.locator('.game-player-0').boundingBox();
