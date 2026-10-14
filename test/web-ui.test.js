@@ -61,26 +61,29 @@ function fakeStorage() {
 }
 
 function fakeDocument() {
-  const document = {
-    createElement(tagName) {
-      return {
-        tagName,
-        ownerDocument: document,
-        children: [],
-        style: {},
-        attributes: {},
-        append(...children) { this.children.push(...children); },
-        replaceChildren(...children) { this.children = children; },
-        scrollIntoView(options) { this.scrollOptions = options; },
-        setAttribute(name, value) { this.attributes[name] = String(value); },
-        getAttribute(name) { return this.attributes[name] ?? null; },
-        addEventListener(type, handler) { this[`on${type}`] = handler; },
-        get textContent() {
-          return (this.text || '') + this.children.map((child) => child.textContent).join('');
-        },
-        set textContent(value) { this.text = String(value); },
-      };
+  const createElement = (tagName) => ({
+    tagName,
+    ownerDocument: document,
+    children: [],
+    style: {},
+    attributes: {},
+    append(...children) { this.children.push(...children); },
+    replaceChildren(...children) { this.children = children; },
+    scrollIntoView(options) { this.scrollOptions = options; },
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+      if (name === 'class') this.className = String(value);
     },
+    getAttribute(name) { return this.attributes[name] ?? null; },
+    addEventListener(type, handler) { this[`on${type}`] = handler; },
+    get textContent() {
+      return (this.text || '') + this.children.map((child) => child.textContent).join('');
+    },
+    set textContent(value) { this.text = String(value); },
+  });
+  const document = {
+    createElement,
+    createElementNS(_namespace, tagName) { return createElement(tagName); },
   };
   return document;
 }
@@ -117,8 +120,9 @@ test('web-ui: Narrow screen - pages are responsive', () => {
   assert.match(html, /game-play-area \{[\s\S]*?height: calc\(100dvh - 8rem\);/);
   assert.match(html, /game-play-area \{[\s\S]*?display: flex;/);
   assert.match(html, /flex-direction: column;/);
-  assert.match(html, /game-die-captured \{ opacity: \.45; filter: grayscale\(1\); \}/);
-  assert.match(html, /game-die-captured \.game-die-value \{ text-decoration: line-through; \}/);
+  assert.match(html, /game-spatial-board \{[\s\S]*?width: 100%;[\s\S]*?height: auto;/);
+  assert.match(html, /game-spatial-die-captured \{ opacity: \.58; \}/);
+  assert.match(html, /game-spatial-attack-connector \{[\s\S]*?stroke-dasharray:/);
   assert.match(html, /game-3d-board \{[\s\S]*?flex: 1 1 auto;/);
   assert.match(html, /@media \(max-height: 700px\)/);
   assert.match(html, /background: rgb\(13 24 22 \/ 98%\);/);
@@ -521,27 +525,31 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   const canvas = allElements(root).find((element) => element.className === 'game-3d-board');
   assert.ok(canvas);
   assert.equal(canvas.getAttribute('aria-hidden'), null);
-  const status = allElements(root).find((element) => element.tagName === 'small' && element.textContent === 'attacker');
-  assert.ok(status);
   const board = allElements(root).find((element) => element.className === 'game-board');
   assert.equal(board.hidden, true);
-  const flatField = board.children.find((element) => element.className === 'game-flat-field');
-  assert.equal(flatField.className, 'game-flat-field');
-  assert.match(flatField.children[0].textContent, /alice/);
-  assert.match(flatField.children[1].textContent, /dan/);
+  const spatialBoard = board.children.find((element) => element.className === 'game-spatial-board');
+  assert.equal(spatialBoard.className, 'game-spatial-board');
+  const regions = spatialBoard.children.filter((element) =>
+    String(element.className || '').includes('game-spatial-region'));
+  assert.equal(regions[0].getAttribute('data-player-name'), 'alice');
+  assert.equal(regions[1].getAttribute('data-player-name'), 'dan');
+  const aliceActiveDie = allElements(spatialBoard).find((element) =>
+    String(element.className || '').includes('game-spatial-die-active') &&
+    element.getAttribute('data-owner') === 'alice');
+  assert.equal(aliceActiveDie.getAttribute('style'), 'color: #ffffff');
   assert.match(board.children[0].textContent, /alice/);
   assert.match(board.children[2].textContent, /dan/);
   assert.ok(allElements(root).some((element) => element.textContent === 'alice' && element.href === profileUrl('alice')));
   assert.ok(allElements(root).some((element) => element.textContent === 'dan' && element.href === profileUrl('dan')));
-  const aliceDice = flatField.children[0];
-  const capturePile = aliceDice.children.find((element) => element.className === 'game-flat-captured-pile');
-  const capturedDice = capturePile.children.find((element) => element.className === 'game-flat-captured-dice');
-  assert.equal(capturedDice.children.length, 2);
-  const recentlyCaptured = capturedDice.children.find((element) => element.textContent.includes('3'));
-  assert.match(recentlyCaptured.textContent, /3/);
-  assert.equal(recentlyCaptured.getAttribute('aria-disabled'), 'true');
-  assert.equal(recentlyCaptured.style.borderTopColor, '#aabbcc');
-  assert.match(capturedDice.textContent, /1/);
+  const capturedDice = allElements(spatialBoard).filter((element) =>
+    String(element.className || '').includes('game-spatial-die-captured'));
+  assert.equal(capturedDice.length, 2);
+  assert.match(capturedDice[0].getAttribute('aria-label'), /captured die/);
+  assert.match(capturedDice[0].getAttribute('aria-label'), /rolled 3/);
+  const capturedShapes = capturedDice.map((die) => die.children.find((element) =>
+    element.className === 'game-spatial-die-shape'));
+  assert.ok(capturedShapes.every((shape) => shape.getAttribute('fill') === '#aabbcc'));
+  assert.match(spatialBoard.textContent, /Captured by alice/);
   const playArea = allElements(root).find((element) => element.className === 'game-play-area');
   assert.equal(playArea.children[0].className, 'game-3d-hud game-3d-hud-top');
   assert.equal(playArea.children[1], canvas);
@@ -555,7 +563,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.match(hud.map((element) => element.textContent).join(' '), /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
   assert.match(hud.map((element) => element.textContent).join(' '), /Status: attacker/);
   assert.ok(allElements(root).some((element) => element.getAttribute('aria-label') === 'Zoom in'));
-  const toggle = allElements(root).find((element) => element.textContent === 'Show flat game state');
+  const toggle = allElements(root).find((element) => element.textContent === 'Show 2D game view');
   toggle.onclick();
   assert.equal(allElements(root).find((element) => element.className === 'game-play-area').hidden, true);
   assert.equal(board.hidden, false);
@@ -567,7 +575,8 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.ok(flip);
   flip.onclick();
   assert.match(board.children[0].children[0].textContent, /dan/);
-  assert.match(board.children[1].textContent, /dan/);
+  assert.equal(board.children[1].children.filter((element) =>
+    String(element.className || '').includes('game-spatial-region'))[0].getAttribute('data-player-name'), 'dan');
   assert.match(board.children[2].textContent, /alice/);
   const all = allElements(root).find((element) => element.textContent === 'Chat & Game Log');
   assert.ok(all);
