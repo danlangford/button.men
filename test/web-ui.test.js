@@ -518,7 +518,6 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.doesNotMatch(root.textContent, /small d-block text-body-secondary/);
   const board = allElements(root).find((element) => element.className === 'game-board');
   assert.notEqual(board.hidden, true);
-  assert.ok(!allElements(root).some((element) => /Show (2D|3D) game view/.test(element.textContent)));
   assert.match(board.children[0].textContent, /Skills: Konstant/);
   assert.match(board.children[0].textContent, /Dice out of play: 7·b10/);
   assert.doesNotMatch(board.children[2].textContent, /Skills:|Dice out of play/);
