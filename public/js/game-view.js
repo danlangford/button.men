@@ -1,6 +1,6 @@
 import { gameUrl } from './games.js';
 import { renderDiceBoard } from './dice-board.js';
-import { buildCapturedHistory, buildReplaySteps } from './game-replay.js';
+import { buildCapturedHistory, buildReplaySteps, formatDieRecipe } from './game-replay.js';
 import { profileUrl } from './links.js';
 
 const value = (object, ...keys) => keys.reduce((result, key) => result ?? object?.[key], undefined);
@@ -37,6 +37,9 @@ function renderPlayer(document, player, active, initiative, position, maxWins) {
   card.append(text(document, 'div', button.recipe ? `Recipe: ${button.recipe}` : '', 'small text-body-secondary'));
   const buttonSkills = list(value(button, 'skillArray', 'skills'));
   if (buttonSkills.length) card.append(text(document, 'div', `Skills: ${buttonSkills.join(', ')}`, 'small text-body-secondary'));
+  const outOfPlay = list(player.outOfPlayDieArray)
+    .map((die) => `${value(die, 'value', 'currentValue', 'roll') ?? '—'}·${formatDieRecipe(die)}`);
+  if (outOfPlay.length) card.append(text(document, 'div', `Dice out of play: ${outOfPlay.join(', ')}`, 'small text-body-secondary'));
   card.append(text(document, 'div', playerScoreText(player, maxWins), 'small d-block'));
   if (active) card.append(text(document, 'span', 'Active player', 'badge text-bg-primary mt-2 me-1'));
   if (initiative) card.append(text(document, 'span', 'Initiative', 'badge text-bg-warning mt-2'));

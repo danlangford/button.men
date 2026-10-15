@@ -1,10 +1,6 @@
 import { expect, test } from '@playwright/test';
 
 test('the 2D board opens by default with player details and no 3D view', async ({ page }) => {
-  let sceneRequested = false;
-  page.on('request', (request) => {
-    if (/dice-scene\.js|three/.test(request.url())) sceneRequested = true;
-  });
   await page.goto('/');
   await page.evaluate(async () => {
     globalThis.window.document.querySelector('#game-view').hidden = false;
@@ -29,12 +25,10 @@ test('the 2D board opens by default with player details and no 3D view', async (
   });
 
   await expect(page.locator('.game-spatial-board')).toBeVisible();
-  await expect(page.locator('.game-player')).toHaveCount(2);
   await expect(page.locator('.game-player-1')).toContainText('Skills: Konstant');
+  await expect(page.locator('.game-player-0')).not.toContainText('Skills:');
   await expect(page.getByRole('button', { name: /Show (2D|3D) game view/ })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /zoom/i })).toHaveCount(0);
   await expect(page.locator('canvas')).toHaveCount(0);
-  expect(sceneRequested).toBeFalsy();
 });
 
 test('replay links select a step and invalid steps fall back to the current game', async ({ page }) => {

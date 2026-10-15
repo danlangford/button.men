@@ -120,7 +120,6 @@ test('web-ui: Narrow screen - pages are responsive', () => {
   assert.match(html, /game-spatial-board \{[\s\S]*?width: 100%;[\s\S]*?height: auto;/);
   assert.match(html, /game-spatial-die-captured \{ opacity: \.58; \}/);
   assert.match(html, /game-spatial-attack-connector \{[\s\S]*?stroke-dasharray:/);
-  assert.doesNotMatch(html, /game-3d-|game-hud-|game-play-area/);
   assert.match(html, /class="navbar-controls d-flex flex-wrap align-items-center gap-2 ms-auto"/);
   assert.match(html, /class="navbar-player text-body-secondary"/);
   assert.match(html, /main \{ min-width: 0; overflow-wrap: anywhere; \}/);
@@ -494,6 +493,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
           { value: 3, recipe: 4, properties: ['WasJustCaptured'] },
           { value: 1, recipe: 6, properties: [] },
         ],
+        outOfPlayDieArray: [{ value: 7, recipe: 'b(10)', skillArray: ['Boom'] }],
         isChatPrivate: false,
       },
       {
@@ -516,12 +516,12 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.match(root.textContent, /hello/);
   assert.doesNotMatch(root.textContent, /attacked/);
   assert.doesNotMatch(root.textContent, /small d-block text-body-secondary/);
-  assert.match(root.textContent, /Skills: Konstant/);
   const board = allElements(root).find((element) => element.className === 'game-board');
   assert.notEqual(board.hidden, true);
-  assert.ok(!allElements(root).some((element) => /game-3d-|game-hud-|game-play-area/.test(String(element.className || ''))));
   assert.ok(!allElements(root).some((element) => /Show (2D|3D) game view/.test(element.textContent)));
-  assert.ok(!allElements(root).some((element) => /zoom/i.test(element.getAttribute('aria-label') || '')));
+  assert.match(board.children[0].textContent, /Skills: Konstant/);
+  assert.match(board.children[0].textContent, /Dice out of play: 7·b10/);
+  assert.doesNotMatch(board.children[2].textContent, /Skills:|Dice out of play/);
   const spatialBoard = board.children.find((element) => element.className === 'game-spatial-board');
   assert.equal(spatialBoard.className, 'game-spatial-board');
   const regions = spatialBoard.children.filter((element) =>

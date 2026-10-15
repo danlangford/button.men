@@ -13,7 +13,7 @@
 ## Decisions
 
 - **Delete `dice-scene.js` outright** rather than leaving it unreferenced. Nothing else imports it, and it was the only user of three.js.
-- **Drop the HUD cards.** They were the 3D view's substitute for the 2D board's player cards. The one thing they showed that the player cards did not was the button's skills, which the "Player and button details" requirement needs; the 2D player card now shows a `Skills: …` line when the button has any.
+- **Drop the HUD cards.** They were the 3D view's substitute for the 2D board's player cards. They showed two things the player cards did not: the button's skills, which the "Player and button details" requirement needs, and dice out of play (for example an attacker removed by a Boom attack, `BMSkillBoom.php`, which buttonweavers lists as "Dice out of play" in `src/ui/js/Game.js`). The 2D player card now shows a `Skills: …` line and a `Dice out of play: …` line when there are any.
 - **Remove the `game-play-area` / `game-3d-*` / `game-hud-*` CSS** and the media queries that only laid out the 3D area. The `game-board` and `game-spatial-*` rules are unchanged.
 - **Simplify orientation state.** With no scene to notify, `bottomPlayerIndex`, `setDiceOrientation`, `setDiceZoom`, `disposeDiceScene` and the scene generation counter go; flipping only toggles `flipped` and re-renders the board.
 
