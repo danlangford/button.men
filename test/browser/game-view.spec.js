@@ -1,20 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-function overlaps(first, second) {
-  return !(
-    first.right <= second.left + 1 ||
-    first.left >= second.right - 1 ||
-    first.bottom <= second.top + 1 ||
-    first.top >= second.bottom - 1
-  );
-}
-
-test('mobile orientations keep both HUDs visible outside the dice area', async ({ page }) => {
-  await page.setViewportSize({ width: 844, height: 390 });
-  await page.route('**/js/dice-scene.js', (route) => route.fulfill({
-    contentType: 'text/javascript',
-    body: 'export function renderDiceScene(container) { container.dataset.sceneReady = "true"; return { dispose() {}, setBottomPlayerIndex() {} }; }',
-  }));
+test('the 2D board opens by default with player details and no 3D view', async ({ page }) => {
+  let sceneRequested = false;
+  page.on('request', (request) => {
+    if (/dice-scene\.js|three/.test(request.url())) sceneRequested = true;
+  });
   await page.goto('/');
   await page.evaluate(async () => {
     globalThis.window.document.querySelector('#game-view').hidden = false;
@@ -37,51 +27,14 @@ test('mobile orientations keep both HUDs visible outside the dice area', async (
       ],
     });
   });
-  await page.waitForFunction(() => globalThis.window.document.querySelector('.game-3d-board')?.dataset.sceneReady === 'true');
 
-  for (const viewport of [{ width: 844, height: 390 }, { width: 390, height: 844 }]) {
-    await page.setViewportSize(viewport);
-    const layout = await page.locator('.game-play-area').evaluate((area) => {
-      const box = (element) => ({
-        left: element.offsetLeft,
-        top: element.offsetTop,
-        width: element.clientWidth,
-        height: element.clientHeight,
-        right: element.offsetLeft + element.clientWidth,
-        bottom: element.offsetTop + element.clientHeight,
-      });
-      const topHud = area.querySelector('.game-3d-hud-top');
-      const board = area.querySelector('.game-3d-board');
-      const bottomHud = area.querySelector('.game-3d-hud-bottom');
-      return {
-        areaWidth: area.clientWidth,
-        areaHeight: area.clientHeight,
-        topHud: box(topHud),
-        board: box(board),
-        bottomHud: box(bottomHud),
-      };
-    });
-    for (const hud of [layout.topHud, layout.bottomHud]) {
-      expect(hud.height).toBeGreaterThan(0);
-      expect(hud.top).toBeGreaterThanOrEqual(0);
-      expect(hud.left).toBeGreaterThanOrEqual(0);
-      expect(hud.right).toBeLessThanOrEqual(layout.areaWidth + 1);
-      expect(hud.bottom).toBeLessThanOrEqual(layout.areaHeight + 1);
-      expect(overlaps(hud, layout.board)).toBeFalsy();
-    }
-    expect(layout.board.height).toBeGreaterThan(0);
-    expect(layout.board.width).toBeGreaterThan(0);
-  }
-
-  const hudCards = page.locator('.game-hud-player');
-  await expect(hudCards).toHaveCount(2);
-  await expect(page.locator('details')).toHaveCount(0);
-  await expect(page.locator('.game-hud-pill').first()).toBeVisible();
-  const overflow = await hudCards.evaluateAll((cards) => cards.map((card) => ({
-    scrollHeight: card.scrollHeight,
-    clientHeight: card.clientHeight,
-  })));
-  expect(overflow.every(({ scrollHeight, clientHeight }) => scrollHeight <= clientHeight + 1)).toBeTruthy();
+  await expect(page.locator('.game-spatial-board')).toBeVisible();
+  await expect(page.locator('.game-player')).toHaveCount(2);
+  await expect(page.locator('.game-player-1')).toContainText('Skills: Konstant');
+  await expect(page.getByRole('button', { name: /Show (2D|3D) game view/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /zoom/i })).toHaveCount(0);
+  await expect(page.locator('canvas')).toHaveCount(0);
+  expect(sceneRequested).toBeFalsy();
 });
 
 test('replay links select a step and invalid steps fall back to the current game', async ({ page }) => {
@@ -113,10 +66,6 @@ test('replay links select a step and invalid steps fall back to the current game
       message: 'alice set swing values: V=6',
     }],
   };
-  await page.route('**/js/dice-scene.js', (route) => route.fulfill({
-    contentType: 'text/javascript',
-    body: 'export function renderDiceScene(container, players, bottom, options) { container.dataset.attackType = options.attackType || ""; container.dataset.zoom = String(options.zoom); container.dataset.neutralOpponentColor = options.neutralOpponentColor; return { dispose() {}, setBottomPlayerIndex() {}, setZoom(value) { container.dataset.zoom = String(value); } }; }',
-  }));
   await page.route('**/api/responder', async (route) => {
     const request = JSON.parse(route.request().postData());
     const response = request.type === 'loadPlayerName'
@@ -133,13 +82,6 @@ test('replay links select a step and invalid steps fall back to the current game
   await expect(page.getByText('History · alice used Skill attack against bob')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Take action on buttonweavers.com' })).toBeHidden();
   await expect(page.getByRole('link', { name: 'Link to this step' })).toHaveAttribute('href', /#game\?gameId=22&replay=.+-attack/);
-  await expect(page.locator('.game-3d-hud .game-hud-pill').filter({ hasText: 'Attacker' })).toBeVisible();
-  await expect(page.getByText('Attack direction: attackers → targets.')).toHaveCount(0);
-  const scene = page.locator('.game-3d-board');
-  await expect(scene).toHaveAttribute('data-attack-type', 'Skill');
-  await expect(scene).toHaveAttribute('data-neutral-opponent-color', '#dddddd');
-  await page.getByRole('button', { name: 'Zoom in' }).click();
-  await expect(scene).toHaveAttribute('data-zoom', '1.25');
   await expect(page.locator('.game-event-current-step')).toContainText('alice performed Skill attack');
   await expect(page.getByText('bob passed')).toBeVisible();
   await expect(page.getByText('alice set swing values: V=6')).toBeVisible();
@@ -150,7 +92,6 @@ test('replay links select a step and invalid steps fall back to the current game
   await expect(page.getByText('History · alice used Skill attack against bob')).toBeVisible();
   await page.getByRole('button', { name: 'Chat', exact: true }).click();
   await expect(page.locator('.game-event-current-step')).toContainText('alice performed Skill attack');
-  await page.getByRole('button', { name: 'Show 2D game view' }).click();
   await expect(page.locator('.game-die-replay-attacker')).toBeVisible();
   await expect(page.locator('.game-die-replay-target')).toBeVisible();
   await expect(page.locator('.game-spatial-attack-label')).toHaveText('Skill attack');
@@ -171,8 +112,6 @@ test('replay links select a step and invalid steps fall back to the current game
   expect(opponentInfo.y + opponentInfo.height).toBeLessThanOrEqual(spatialBoard.y + 1);
   expect(spatialRegions[0]).toBeLessThan(spatialRegions[1]);
   expect(playerInfo.y).toBeGreaterThanOrEqual(spatialBoard.y + spatialBoard.height - 1);
-  await page.getByRole('button', { name: 'Show 3D game view' }).click();
-  await expect(scene).toHaveAttribute('data-zoom', '1.25');
   await expect(page).toHaveURL(/#game\?gameId=22&replay=.+-result$/);
   await page.getByRole('button', { name: 'Next step' }).click();
   await page.getByRole('button', { name: 'Next step' }).click();
@@ -190,10 +129,6 @@ test('replay links select a step and invalid steps fall back to the current game
 
 test('spatial 2D view connects multi-die attacks and stays inside a phone viewport', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.route('**/js/dice-scene.js', (route) => route.fulfill({
-    contentType: 'text/javascript',
-    body: 'export function renderDiceScene() { return { dispose() {}, setBottomPlayerIndex() {}, setZoom() {} }; }',
-  }));
   await page.goto('/');
   await page.evaluate(async () => {
     globalThis.window.document.querySelector('#game-view').hidden = false;
@@ -225,7 +160,6 @@ test('spatial 2D view connects multi-die attacks and stays inside a phone viewpo
     }, { timestamp: '1' });
   });
 
-  await page.getByRole('button', { name: 'Show 2D game view' }).click();
   await expect(page.locator('.game-die-replay-attacker')).toHaveCount(2);
   await expect(page.locator('.game-die-replay-target')).toHaveCount(1);
   await expect(page.locator('.game-spatial-attack-connector')).toHaveCount(2);
@@ -255,5 +189,4 @@ test('spatial 2D view connects multi-die attacks and stays inside a phone viewpo
   await expect(page.locator('.game-spatial-region-top')).toHaveAttribute('data-player-name', 'bob');
   await page.getByRole('button', { name: 'Flip orientation' }).click();
   await expect(page.locator('.game-spatial-region-top')).toHaveAttribute('data-player-name', 'alice');
-  await expect(page.getByRole('button', { name: 'Show 3D game view' })).toBeVisible();
 });

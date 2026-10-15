@@ -117,16 +117,10 @@ test('web-ui: Narrow screen - pages are responsive', () => {
 
   const html = read('public/index.html');
   assert.match(html, /@media \(max-width: 575\.98px\)/);
-  assert.match(html, /game-play-area \{[\s\S]*?height: calc\(100dvh - 8rem\);/);
-  assert.match(html, /game-play-area \{[\s\S]*?display: flex;/);
-  assert.match(html, /flex-direction: column;/);
   assert.match(html, /game-spatial-board \{[\s\S]*?width: 100%;[\s\S]*?height: auto;/);
   assert.match(html, /game-spatial-die-captured \{ opacity: \.58; \}/);
   assert.match(html, /game-spatial-attack-connector \{[\s\S]*?stroke-dasharray:/);
-  assert.match(html, /game-3d-board \{[\s\S]*?flex: 1 1 auto;/);
-  assert.match(html, /@media \(max-height: 700px\)/);
-  assert.match(html, /background: rgb\(13 24 22 \/ 98%\);/);
-  assert.match(html, /game-hud-pill \{/);
+  assert.doesNotMatch(html, /game-3d-|game-hud-|game-play-area/);
   assert.match(html, /class="navbar-controls d-flex flex-wrap align-items-center gap-2 ms-auto"/);
   assert.match(html, /class="navbar-player text-body-secondary"/);
   assert.match(html, /main \{ min-width: 0; overflow-wrap: anywhere; \}/);
@@ -491,7 +485,7 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
       {
         playerName: 'alice',
         playerColor: '#112233',
-        button: { name: 'Avis', recipe: '1234' },
+        button: { name: 'Avis', recipe: '1234', skillArray: ['Konstant'] },
         roundScore: 2,
         sideScore: 3,
         gameScoreArray: { W: 2, L: 1, D: 0 },
@@ -522,11 +516,12 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
   assert.match(root.textContent, /hello/);
   assert.doesNotMatch(root.textContent, /attacked/);
   assert.doesNotMatch(root.textContent, /small d-block text-body-secondary/);
-  const canvas = allElements(root).find((element) => element.className === 'game-3d-board');
-  assert.ok(canvas);
-  assert.equal(canvas.getAttribute('aria-hidden'), null);
+  assert.match(root.textContent, /Skills: Konstant/);
   const board = allElements(root).find((element) => element.className === 'game-board');
-  assert.equal(board.hidden, true);
+  assert.notEqual(board.hidden, true);
+  assert.ok(!allElements(root).some((element) => /game-3d-|game-hud-|game-play-area/.test(String(element.className || ''))));
+  assert.ok(!allElements(root).some((element) => /Show (2D|3D) game view/.test(element.textContent)));
+  assert.ok(!allElements(root).some((element) => /zoom/i.test(element.getAttribute('aria-label') || '')));
   const spatialBoard = board.children.find((element) => element.className === 'game-spatial-board');
   assert.equal(spatialBoard.className, 'game-spatial-board');
   const regions = spatialBoard.children.filter((element) =>
@@ -550,27 +545,6 @@ test('web-ui: Game view - renders players, dice, orientation, and filtered activ
     element.className === 'game-spatial-die-shape'));
   assert.ok(capturedShapes.every((shape) => shape.getAttribute('fill') === '#aabbcc'));
   assert.match(spatialBoard.textContent, /Captured by alice/);
-  const playArea = allElements(root).find((element) => element.className === 'game-play-area');
-  assert.equal(playArea.children[0].className, 'game-3d-hud game-3d-hud-top');
-  assert.equal(playArea.children[1], canvas);
-  assert.equal(playArea.children[2].className, 'game-3d-hud game-3d-hud-bottom');
-  const hud = allElements(root).filter((element) => element.className?.startsWith('game-3d-hud '));
-  assert.equal(hud.length, 2);
-  const hudPills = allElements(root).filter((element) => element.className === 'game-hud-pill');
-  assert.ok(hudPills.length >= 3);
-  assert.ok(hudPills.some((element) => element.textContent === '4·p6 · Skills: Poison · Status: attacker'));
-  assert.ok(hudPills.some((element) => element.textContent === '3·4'));
-  assert.match(hud.map((element) => element.textContent).join(' '), /Score: 2 \(\+3 sides\) · W\/L\/T: 2\/1\/0 \(3\)/);
-  assert.match(hud.map((element) => element.textContent).join(' '), /Status: attacker/);
-  assert.ok(allElements(root).some((element) => element.getAttribute('aria-label') === 'Zoom in'));
-  const toggle = allElements(root).find((element) => element.textContent === 'Show 2D game view');
-  toggle.onclick();
-  assert.equal(allElements(root).find((element) => element.className === 'game-play-area').hidden, true);
-  assert.equal(board.hidden, false);
-  assert.equal(toggle.textContent, 'Show 3D game view');
-  toggle.onclick();
-  assert.equal(allElements(root).find((element) => element.className === 'game-play-area').hidden, false);
-  assert.equal(board.hidden, true);
   const flip = allElements(root).find((element) => element.textContent === 'Flip orientation');
   assert.ok(flip);
   flip.onclick();
@@ -632,8 +606,6 @@ test('web-ui: Game replay - steps backward and forward and hides external action
     element.textContent.includes('Attacker')));
   assert.ok(elements().some((element) => String(element.className || '').includes('game-die-replay-target') &&
     element.textContent.includes('Target')));
-  assert.ok(elements().some((element) => element.className === 'game-hud-pill' &&
-    element.textContent.startsWith('Attacker ·')));
   current.onclick();
   assert.equal(next.disabled, true);
   assert.equal(action.hidden, false);
