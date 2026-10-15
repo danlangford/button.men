@@ -43,7 +43,7 @@ Each die in play SHALL display its current rolled value, its size or recipe, its
 - **THEN** the die visually indicates those skills and status conditions
 
 ### Requirement: Spatial 2D dice presentation
-The game view SHALL provide a spatial 2D presentation in place of the flat card-grid presentation. It SHALL arrange each player's active dice in a distinct opposing region of the play area, preserve the selected player orientation, and keep captured dice visually separate from active dice. The existing 3D presentation SHALL remain available.
+The game view SHALL present dice in a spatial 2D play area. It SHALL arrange each player's active dice in a distinct opposing region of the play area, preserve the selected player orientation, and keep captured dice visually separate from active dice.
 
 #### Scenario: Opposing player regions
 - **WHEN** a viewer opens the spatial 2D presentation
@@ -56,10 +56,6 @@ The game view SHALL provide a spatial 2D presentation in place of the flat card-
 #### Scenario: Captured dice remain distinct
 - **WHEN** either player has captured dice
 - **THEN** those dice are visibly grouped apart from both players' active dice and identified as captured
-
-#### Scenario: Switching presentations
-- **WHEN** a viewer switches between the spatial 2D and 3D presentations
-- **THEN** both presentations remain available and show the same selected game or replay state
 
 ### Requirement: Die geometry communicates die size
 Each die in the spatial 2D presentation SHALL use a geometric silhouette and scale that communicate its current number of sides, while keeping its rolled value and recipe legible. Dice with the same number of sides SHALL use consistent geometry, dice with meaningfully different side counts SHALL be visually distinguishable without relying only on their text labels, and a die without a supported dedicated geometry SHALL use a clearly labeled fallback.
@@ -150,16 +146,12 @@ The game view SHALL let a viewer step backward and forward through the action-lo
 - **WHEN** a viewer who is the active player is viewing a past step
 - **THEN** no attack, pass or other game action can be submitted until they return to the current state
 
-### Requirement: Attack steps are obvious
-For an attack step, both the 3D and spatial 2D presentations SHALL identify attacking dice, targeted dice, attack direction, and attack type using more than colour alone. Attacker and target dice SHALL also have text labels and visual emphasis. The spatial 2D presentation SHALL draw directional connectors from attacking dice to targeted dice so every involved die is connected.
+### Requirement: Attack steps are clear in the 2D view
+For an attack step, the spatial 2D presentation SHALL identify attacking dice, targeted dice, attack direction, and attack type using more than colour alone. Attacker and target dice SHALL also have text labels and visual emphasis. The spatial 2D presentation SHALL draw directional connectors from attacking dice to targeted dice so every involved die is connected.
 
 #### Scenario: Attack displayed
 - **WHEN** a viewer steps to an attack
 - **THEN** the attacking dice and targeted dice are each visibly distinguished from other dice, the direction from attackers to targets is shown, and the attack type is stated
-
-#### Scenario: Both presentations
-- **WHEN** the same attack step is viewed in the 3D presentation and in the spatial 2D presentation
-- **THEN** attackers, targets and attack type are clearly designated in both
 
 #### Scenario: Spatial attack connections
 - **WHEN** an attack step with one or more attacking dice and one or more targeted dice is shown in the spatial 2D presentation
